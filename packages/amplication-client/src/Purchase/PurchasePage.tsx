@@ -1,27 +1,29 @@
-import { Paywall, BillingPeriod, Price } from "@stigg/react-sdk";
 import { BillingPlan } from "@amplication/util-billing-types";
+import { BillingPeriod, Paywall, Price } from "@stigg/react-sdk";
 
-import { useTracking } from "../util/analytics";
-import { AnalyticsEventNames } from "../util/analytics-events.types";
-import { useHistory } from "react-router-dom";
-import { Helmet } from "react-helmet";
-import * as models from "../models";
 import {
   Button,
   EnumButtonStyle,
   EnumIconPosition,
   Modal,
+  Snackbar,
 } from "@amplication/ui/design-system";
-import "./PurchasePage.scss";
 import { useCallback, useContext, useState } from "react";
+import { Helmet } from "react-helmet";
+import { useHistory } from "react-router-dom";
+import * as models from "../models";
+import { useTracking } from "../util/analytics";
+import { AnalyticsEventNames } from "../util/analytics-events.types";
+import "./PurchasePage.scss";
 
-import { AppContext } from "../context/appContext";
-import { PromoBanner } from "./PromoBanner";
-import { ApolloError, useMutation, useQuery } from "@apollo/client";
+import { ApolloError, useMutation } from "@apollo/client";
+import { useContactUs } from "../Workspaces/hooks/useContactUs";
 import { PROVISION_SUBSCRIPTION } from "../Workspaces/queries/workspaceQueries";
-import { PurchaseLoader } from "./PurchaseLoader";
+import { AppContext } from "../context/appContext";
+import { formatError } from "../util/error";
 import { FAQ } from "./FAQ";
-import { GET_CONTACT_US_LINK } from "../Workspaces/queries/workspaceQueries";
+import { PromoBanner } from "./PromoBanner";
+import { PurchaseLoader } from "./PurchaseLoader";
 
 export type DType = {
   provisionSubscription: models.ProvisionSubscriptionResult;
@@ -58,9 +60,12 @@ const CLASS_NAME = "purchase-page";
 
 const PurchasePage = (props) => {
   const { currentWorkspace, openHubSpotChat } = useContext(AppContext);
-
-  const { data } = useQuery(GET_CONTACT_US_LINK, {
-    variables: { id: currentWorkspace.id },
+  const [provisionErrorMessage, setProvisionErrorMessage] = useState<
+    string | null
+  >(null);
+  const { handleContactUsClick } = useContactUs({
+    actionName: "Contact Us",
+    eventOriginLocation: "pricing-page",
   });
 
   const { trackEvent } = useTracking();
@@ -76,26 +81,37 @@ const PurchasePage = (props) => {
     history.action !== "POP" ? history.goBack() : history.push("/");
   }, [history]);
 
-  const [provisionSubscription, { loading: provisionSubscriptionLoading }] =
-    useMutation<DType>(PROVISION_SUBSCRIPTION, {
-      onCompleted: (data) => {
-        const { provisionStatus, checkoutUrl } = data.provisionSubscription;
-        if (provisionStatus === "PAYMENT_REQUIRED")
-          window.location.href = checkoutUrl;
-      },
-      onError: (error: ApolloError) => {
-        console.log(error);
-      },
-    });
+  const [
+    provisionSubscription,
+    {
+      loading: provisionSubscriptionLoading,
+      error: provisionSubscriptionError,
+    },
+  ] = useMutation<DType>(PROVISION_SUBSCRIPTION, {
+    onCompleted: (data) => {
+      const { provisionStatus, checkoutUrl } = data.provisionSubscription;
+      if (provisionStatus === "PAYMENT_REQUIRED") {
+        window.location.href = checkoutUrl;
+      } else if (provisionStatus === "SUCCESS") {
+        setLoading(false);
+      } else {
+        setLoading(false);
+        setProvisionErrorMessage(
+          "Failed to provision subscription. Please try again or contact us for support."
+        );
+      }
+    },
+    onError: (error: ApolloError) => {
+      setLoading(false);
+      console.log(error);
+    },
+  });
 
-  const handleContactUsClick = useCallback(() => {
-    window.open(data?.contactUsLink, "_blank");
-    trackEvent({
-      eventName: AnalyticsEventNames.ContactUsButtonClick,
-      action: "Contact Us",
-      eventOriginLocation: "pricing-page",
-    });
-  }, [currentWorkspace.id, data?.contactUsLink]);
+  const errorMessage =
+    provisionSubscriptionError && formatError(provisionSubscriptionError);
+
+  const returnUrl =
+    props.location.state?.from?.pathname || `/${currentWorkspace?.id}`;
 
   const handleDowngradeClick = useCallback(() => {
     // This query param is used to open HubSpot chat with the downgrade flow
@@ -111,11 +127,11 @@ const PurchasePage = (props) => {
         variables: {
           data: {
             workspaceId: currentWorkspace.id,
-            planId: BillingPlan.Pro,
+            planId: BillingPlan.Essential,
             billingPeriod: selectedBillingPeriod,
             intentionType,
-            successUrl: props.location.state?.from?.pathname,
-            cancelUrl: props.location.state?.from?.pathname,
+            successUrl: returnUrl,
+            cancelUrl: returnUrl,
           },
         },
       });
@@ -144,7 +160,7 @@ const PurchasePage = (props) => {
         case BillingPlan.Enterprise:
           handleContactUsClick();
           break;
-        case BillingPlan.Pro:
+        case BillingPlan.Essential:
           setLoading(true);
           await upgradeToPro(selectedBillingPeriod, intentionType);
           break;
@@ -188,14 +204,14 @@ const PurchasePage = (props) => {
                 : `All core backend functionality:`;
             },
             planCTAButton: {
-              startTrial: () => "Contact us",
+              startTrial: () => "Upgrade now", //essential for existing users starts without a trial
               startNew: provisionSubscriptionLoading
                 ? "...Loading"
                 : "Upgrade now",
               upgrade: provisionSubscriptionLoading
                 ? "...Loading"
                 : "Upgrade now",
-              custom: "Talk with an Expert",
+              custom: "Book a Demo",
             },
             price: {
               free: {
@@ -206,7 +222,6 @@ const PurchasePage = (props) => {
               priceNotSet: "Price not set",
             },
           }}
-          preferredBillingPeriod={BillingPeriod.Monthly}
           onBillingPeriodChange={(billingPeriod: BillingPeriod) => {
             trackEvent({
               eventName: AnalyticsEventNames.PricingPageChangeBillingCycle,
@@ -255,6 +270,12 @@ const PurchasePage = (props) => {
           </div>
         </div>
       </div>
+      <Snackbar
+        open={
+          Boolean(provisionSubscriptionError) || Boolean(provisionErrorMessage)
+        }
+        message={errorMessage || provisionErrorMessage}
+      />
     </Modal>
   );
 };

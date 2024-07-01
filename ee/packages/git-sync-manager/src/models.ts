@@ -96,6 +96,7 @@ export type AssistantMessage = {
 
 export type AssistantMessageDelta = {
   completed: Scalars['Boolean']['output'];
+  functionExecuted?: Maybe<EnumAssistantFunctions>;
   id: Scalars['String']['output'];
   snapshot: Scalars['String']['output'];
   text: Scalars['String']['output'];
@@ -334,8 +335,16 @@ export type CommitBuildsArgs = {
 export type CommitCreateInput = {
   /** It will bypass the limitations of the plan (if any). It will only work for limitation that support commit bypass. */
   bypassLimitations?: InputMaybe<Scalars['Boolean']['input']>;
+  /** The strategy to use when committing the changes. If not provided, the default strategy will be used. */
+  commitStrategy?: InputMaybe<EnumCommitStrategy>;
   message: Scalars['String']['input'];
   project: WhereParentIdInput;
+  /**
+   * The resources to commit. By default, it contains all the project resources.
+   *       If the commit strategy is AllWithPendingChanges, it will contain the resources with pending changes.
+   *       If the commit strategy is Specific, it will be an array with one element.
+   */
+  resourceIds?: InputMaybe<Array<Scalars['String']['input']>>;
 };
 
 export type CommitOrderByInput = {
@@ -713,9 +722,35 @@ export enum EnumActionStepStatus {
   Waiting = 'Waiting'
 }
 
+export enum EnumAssistantFunctions {
+  CommitProjectPendingChanges = 'CommitProjectPendingChanges',
+  CreateEntities = 'CreateEntities',
+  CreateEntityFields = 'CreateEntityFields',
+  CreateModule = 'CreateModule',
+  CreateModuleAction = 'CreateModuleAction',
+  CreateModuleDto = 'CreateModuleDto',
+  CreateModuleEnum = 'CreateModuleEnum',
+  CreateProject = 'CreateProject',
+  CreateService = 'CreateService',
+  GetModuleActions = 'GetModuleActions',
+  GetModuleDtosAndEnums = 'GetModuleDtosAndEnums',
+  GetPlugins = 'GetPlugins',
+  GetProjectPendingChanges = 'GetProjectPendingChanges',
+  GetProjectServices = 'GetProjectServices',
+  GetService = 'GetService',
+  GetServiceEntities = 'GetServiceEntities',
+  GetServiceModules = 'GetServiceModules',
+  InstallPlugins = 'InstallPlugins'
+}
+
 export enum EnumAssistantMessageRole {
   Assistant = 'Assistant',
   User = 'User'
+}
+
+export enum EnumAssistantMessageType {
+  Default = 'Default',
+  Onboarding = 'Onboarding'
 }
 
 export enum EnumAuthProviderType {
@@ -748,6 +783,17 @@ export enum EnumBuildStatus {
   Failed = 'Failed',
   Invalid = 'Invalid',
   Running = 'Running'
+}
+
+export enum EnumCodeGenerator {
+  DotNet = 'DotNet',
+  NodeJs = 'NodeJs'
+}
+
+export enum EnumCommitStrategy {
+  All = 'All',
+  AllWithPendingChanges = 'AllWithPendingChanges',
+  Specific = 'Specific'
 }
 
 export enum EnumDataType {
@@ -923,6 +969,7 @@ export enum EnumSchemaNames {
 
 export enum EnumSubscriptionPlan {
   Enterprise = 'Enterprise',
+  Essential = 'Essential',
   Free = 'Free',
   PreviewBreakTheMonolith = 'PreviewBreakTheMonolith',
   Pro = 'Pro'
@@ -1270,6 +1317,11 @@ export type ModuleDtoEnumMemberCreateInput = {
   name?: InputMaybe<Scalars['String']['input']>;
 };
 
+export type ModuleDtoEnumMemberInput = {
+  name: Scalars['String']['input'];
+  value: Scalars['String']['input'];
+};
+
 export type ModuleDtoEnumMemberUpdateInput = {
   name: Scalars['String']['input'];
   value: Scalars['String']['input'];
@@ -1294,6 +1346,13 @@ export type ModuleDtoProperty = {
 export type ModuleDtoPropertyCreateInput = {
   moduleDto: WhereParentIdInput;
   name?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type ModuleDtoPropertyInput = {
+  isArray: Scalars['Boolean']['input'];
+  isOptional: Scalars['Boolean']['input'];
+  name: Scalars['String']['input'];
+  propertyTypes: Array<PropertyTypeDefInput>;
 };
 
 export type ModuleDtoPropertyUpdateInput = {
@@ -1414,7 +1473,6 @@ export type Mutation = {
   redesignProject: UserAction;
   resendInvitation?: Maybe<Invitation>;
   revokeInvitation?: Maybe<Invitation>;
-  sendAssistantMessage: AssistantThread;
   sendAssistantMessageWithStream: AssistantThread;
   setCurrentWorkspace: Auth;
   setPluginOrder?: Maybe<PluginOrder>;
@@ -1550,11 +1608,15 @@ export type MutationCreateModuleActionArgs = {
 
 export type MutationCreateModuleDtoArgs = {
   data: ModuleDtoCreateInput;
+  members?: InputMaybe<Array<ModuleDtoEnumMemberInput>>;
+  properties?: InputMaybe<Array<ModuleDtoPropertyInput>>;
 };
 
 
 export type MutationCreateModuleDtoEnumArgs = {
   data: ModuleDtoCreateInput;
+  members?: InputMaybe<Array<ModuleDtoEnumMemberInput>>;
+  properties?: InputMaybe<Array<ModuleDtoPropertyInput>>;
 };
 
 
@@ -1771,12 +1833,6 @@ export type MutationResendInvitationArgs = {
 
 export type MutationRevokeInvitationArgs = {
   where: WhereUniqueInput;
-};
-
-
-export type MutationSendAssistantMessageArgs = {
-  context: AssistantContext;
-  data: SendAssistantMessageInput;
 };
 
 
@@ -2556,6 +2612,7 @@ export type RemoteGitRepository = {
 
 export type Resource = {
   builds: Array<Build>;
+  codeGenerator?: Maybe<EnumCodeGenerator>;
   codeGeneratorStrategy?: Maybe<CodeGeneratorVersionStrategy>;
   codeGeneratorVersion?: Maybe<Scalars['String']['output']>;
   createdAt: Scalars['DateTime']['output'];
@@ -2593,6 +2650,7 @@ export type ResourceEntitiesArgs = {
 };
 
 export type ResourceCreateInput = {
+  codeGenerator: EnumCodeGenerator;
   description: Scalars['String']['input'];
   gitRepository?: InputMaybe<ConnectGitRepositoryInput>;
   name: Scalars['String']['input'];
@@ -2711,6 +2769,7 @@ export enum Role {
 
 export type SendAssistantMessageInput = {
   message: Scalars['String']['input'];
+  messageType?: InputMaybe<EnumAssistantMessageType>;
   threadId?: InputMaybe<Scalars['String']['input']>;
 };
 

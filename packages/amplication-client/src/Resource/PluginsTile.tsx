@@ -246,7 +246,11 @@ type pluginLogosProps = {
 };
 function PluginLogos({ installedPlugins }: pluginLogosProps) {
   const { currentResource } = useAppContext();
-  const { pluginCatalog } = usePlugins(currentResource?.id);
+  const { pluginCatalog } = usePlugins(
+    currentResource?.id,
+    null,
+    currentResource?.codeGenerator
+  );
 
   const firstPlugins = installedPlugins.slice(0, 4);
   const restPlugins = installedPlugins.slice(4);
@@ -259,6 +263,7 @@ function PluginLogos({ installedPlugins }: pluginLogosProps) {
           direction={TOOLTIP_DIRECTION}
           aria-label={plugin.displayName}
           noDelay
+          key={plugin.id}
         >
           <PluginLogo plugin={pluginCatalog[plugin.pluginId]} />
         </Tooltip>

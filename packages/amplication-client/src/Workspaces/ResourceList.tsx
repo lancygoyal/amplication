@@ -1,7 +1,6 @@
 import {
   CircleBadge,
   CircularProgress,
-  EnumButtonStyle,
   EnumFlexDirection,
   EnumFlexItemMargin,
   EnumGapSize,
@@ -32,10 +31,6 @@ import { formatError } from "../util/error";
 import { pluralize } from "../util/pluralize";
 import ResourceListItem from "./ResourceListItem";
 import { useStiggContext } from "@stigg/react-sdk";
-import {
-  BtmButton,
-  EnumButtonLocation,
-} from "../Resource/break-the-monolith/BtmButton";
 import { UsageInsights } from "../UsageInsights/UsageInsights";
 import "./ResourceList.scss";
 
@@ -123,11 +118,6 @@ function ResourceList() {
               itemsAlign={EnumItemsAlign.Center}
               direction={EnumFlexDirection.Row}
             >
-              <BtmButton
-                openInFullScreen={true}
-                location={EnumButtonLocation.Project}
-                ButtonStyle={EnumButtonStyle.GradientOutline}
-              />
               <CreateResourceButton resourcesLength={resources.length} />
             </FlexItem>
           </>
@@ -160,7 +150,7 @@ function ResourceList() {
         itemsAlign={EnumItemsAlign.Stretch}
       >
         <Panel
-          panelStyle={EnumPanelStyle.Bordered}
+          panelStyle={EnumPanelStyle.Bold}
           className={`${CLASS_NAME}__resources`}
           themeColor={EnumTextColor.ThemeBlue}
         >

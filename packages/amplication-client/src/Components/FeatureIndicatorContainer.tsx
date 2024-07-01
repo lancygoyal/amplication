@@ -14,8 +14,10 @@ import { BillingFeature } from "@amplication/util-billing-types";
 import React from "react";
 import {
   FeatureIndicator,
-  defaultTextEnd,
-  defaultTextStart,
+  DEFAULT_TEXT_END,
+  DEFAULT_TEXT_START,
+  DISABLED_DEFAULT_TEXT_END,
+  EnumCtaType,
 } from "./FeatureIndicator";
 import "./FeatureIndicatorContainer.scss";
 import { omit } from "lodash";
@@ -49,6 +51,7 @@ export type Props = {
   render?: (props: { disabled: boolean; icon?: IconType }) => ReactElement;
   reversePosition?: boolean;
   showTooltip?: boolean;
+  ctaType?: EnumCtaType;
 };
 
 export const FeatureIndicatorContainer: FC<Props> = ({
@@ -61,6 +64,7 @@ export const FeatureIndicatorContainer: FC<Props> = ({
   render,
   reversePosition,
   showTooltip = true,
+  ctaType = EnumCtaType.Upgrade,
 }) => {
   const { stigg } = useStiggContext();
   const { currentWorkspace } = useContext(AppContext);
@@ -127,45 +131,39 @@ export const FeatureIndicatorContainer: FC<Props> = ({
     }
     if (
       subscriptionPlan === EnumSubscriptionPlan.Enterprise &&
-      subscription.status !== EnumSubscriptionStatus.Trailing
+      status !== EnumSubscriptionStatus.Trailing
     ) {
       return fullEnterpriseText;
     }
 
-    return defaultTextStart;
-  }, [
-    disabled,
-    subscriptionPlan,
-    subscription.status,
-    limitationText,
-    fullEnterpriseText,
-  ]);
+    return DEFAULT_TEXT_START;
+  }, [disabled, subscriptionPlan, status, limitationText, fullEnterpriseText]);
 
   const textEnd = useMemo(() => {
     if (disabled) {
-      return "";
+      return DISABLED_DEFAULT_TEXT_END;
     }
     if (
       subscriptionPlan === EnumSubscriptionPlan.Enterprise &&
-      subscription.status !== EnumSubscriptionStatus.Trailing
+      status !== EnumSubscriptionStatus.Trailing
     ) {
       return "";
     }
 
-    return defaultTextEnd;
-  }, [disabled, subscriptionPlan, subscription.status]);
+    return DEFAULT_TEXT_END;
+  }, [disabled, subscriptionPlan, status]);
 
   const showTooltipLink = useMemo(() => {
     if (
       isPreviewPlan(subscriptionPlan) ||
       (subscriptionPlan === EnumSubscriptionPlan.Enterprise &&
-        subscription.status !== EnumSubscriptionStatus.Trailing)
+        status !== EnumSubscriptionStatus.Trailing)
     ) {
       return false; // don't show the upgrade link when the plan is preview
     }
 
     return true; // in case of null, it falls back to the default link text
-  }, [subscriptionPlan, subscription]);
+  }, [subscriptionPlan, status]);
 
   useEffect(() => {
     if (!subscriptionPlan || !status || !featureId) {
@@ -202,6 +200,7 @@ export const FeatureIndicatorContainer: FC<Props> = ({
           textStart={textStart}
           textEnd={textEnd}
           showTooltipLink={showTooltipLink}
+          ctaType={ctaType}
         ></FeatureIndicator>
       )}
       {!render &&
@@ -213,6 +212,7 @@ export const FeatureIndicatorContainer: FC<Props> = ({
             textStart={textStart}
             textEnd={textEnd}
             showTooltipLink={showTooltipLink}
+            ctaType={ctaType}
             element={
               featureIndicatorPlacement ===
               FeatureIndicatorPlacement.Outside ? (

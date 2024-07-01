@@ -26,6 +26,7 @@ import {
   LicenseIndicatorContainer,
   LicensedResourceType,
 } from "../Components/LicenseIndicatorContainer";
+import useAvailableCodeGenerators from "../Workspaces/hooks/useAvailableCodeGenerators";
 
 const OPTIONS = [
   {
@@ -93,6 +94,8 @@ const Commit = ({
   const match = useRouteMatch<RouteMatchProps>();
   const [isOpenLimitationDialog, setOpenLimitationDialog] = useState(false);
   const formikRef = useRef(null);
+
+  const { dotNetGeneratorEnabled } = useAvailableCodeGenerators();
 
   const {
     setCommitRunning,
@@ -181,11 +184,11 @@ const Commit = ({
           workspaceId: currentWorkspace.id,
         });
         history.push(
-          `/${currentWorkspace?.id}/${currentProject?.id}/dotnet-promote`
+          `/${currentWorkspace?.id}/${currentProject?.id}/dotnet-upgrade`
         );
       }
     },
-    [currentProject?.id, currentWorkspace.id, history, trackEvent]
+    [currentProject?.id, currentWorkspace?.id, history, trackEvent]
   );
 
   return (
@@ -221,17 +224,19 @@ const Commit = ({
                   autoComplete="off"
                 />
               )}
-              <MultiStateToggle
-                label=""
-                name="action_"
-                options={OPTIONS}
-                onChange={handleOnSelectLanguageChange}
-                selectedValue={"node"}
-              />
+              {!dotNetGeneratorEnabled && (
+                <MultiStateToggle
+                  className={`${CLASS_NAME}__technology-toggle`}
+                  label=""
+                  name="action_"
+                  options={OPTIONS}
+                  onChange={handleOnSelectLanguageChange}
+                  selectedValue={"node"}
+                />
+              )}
               <LicenseIndicatorContainer
-                featureId={BillingFeature.BlockBuild}
+                blockByFeatureId={BillingFeature.BlockBuild}
                 licensedResourceType={LicensedResourceType.Project}
-                licensedTooltipText="The workspace reached your plan's project limitation. "
               >
                 {commitBtnType === CommitBtnType.Button ? (
                   <Button

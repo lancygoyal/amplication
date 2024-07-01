@@ -51,12 +51,12 @@ export class BuildController {
     @Payload() message: CodeGenerationSuccess.Value
   ): Promise<void> {
     const args = plainToInstance(CodeGenerationSuccess.Value, message);
+    await this.buildService.saveToGitProvider(args.buildId);
     await this.buildService.completeCodeGenerationStep(
       args.buildId,
       EnumActionStepStatus.Success,
       args.codeGeneratorVersion
     );
-    await this.buildService.saveToGitProvider(args.buildId);
   }
 
   @EventPattern(KAFKA_TOPICS.CODE_GENERATION_FAILURE_TOPIC)
@@ -74,6 +74,7 @@ export class BuildController {
         validationErrors: validationErrors.map((error) =>
           error.toString().replace(/\n/g, " ")
         ),
+        message,
       });
       return;
     }

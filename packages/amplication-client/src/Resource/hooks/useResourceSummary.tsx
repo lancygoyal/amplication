@@ -53,7 +53,9 @@ export const useResourceSummary = (currentResource: models.Resource) => {
     roles: 0,
   });
   const { pluginInstallations, loadingPluginInstallation } = usePlugins(
-    currentResource.id
+    currentResource.id,
+    null,
+    currentResource.codeGenerator
   );
 
   const { data: categoriesData, loading: categoriesLoading } = useQuery<{
@@ -92,7 +94,7 @@ export const useResourceSummary = (currentResource: models.Resource) => {
     });
 
     const installedCategories = pluginInstallations.reduce((acc, plugin) => {
-      const categories = plugin.categories || [];
+      const categories = plugin?.categories || [];
       categories.forEach((category) => {
         if (!category) return;
         const categoryObj =

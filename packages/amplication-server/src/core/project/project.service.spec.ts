@@ -19,7 +19,7 @@ import {
   EnumResourceType,
   EnumPendingChangeAction,
   EnumPendingChangeOriginType,
-} from "@amplication/code-gen-types/models";
+} from "@amplication/code-gen-types";
 import { PendingChange } from "../resource/dto/PendingChange";
 import { ResourceService } from "../resource/resource.service";
 import { BuildService } from "../build/build.service";
@@ -37,6 +37,7 @@ import { BillingFeature } from "@amplication/util-billing-types";
 import { SubscriptionService } from "../subscription/subscription.service";
 import { EnumPreviewAccountType } from "../auth/dto/EnumPreviewAccountType";
 import { MockedSegmentAnalyticsProvider } from "../../services/segmentAnalytics/tests";
+import { MockedAmplicationLoggerProvider } from "@amplication/util/nestjs/logging/test-utils";
 
 /** values mock */
 const EXAMPLE_USER_ID = "exampleUserId";
@@ -384,6 +385,7 @@ describe("ProjectService", () => {
           provide: GitProviderService,
           useClass: jest.fn(() => ({})),
         },
+        MockedAmplicationLoggerProvider,
       ],
     }).compile();
 
@@ -418,7 +420,7 @@ describe("ProjectService", () => {
         service.createProject(args, EXAMPLE_USER_ID)
       ).rejects.toThrow(
         new BillingLimitationError(
-          "Your workspace exceeds its project limitation.",
+          "You have reached the maximum number of projects allowed. To continue using additional projects, please upgrade your plan.",
           BillingFeature.Projects
         )
       );

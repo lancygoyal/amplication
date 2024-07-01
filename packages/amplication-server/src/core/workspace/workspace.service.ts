@@ -44,7 +44,7 @@ import {
   EnumAuthProviderType,
   EnumBlockType,
   EnumDataType,
-} from "@amplication/code-gen-types/models";
+} from "@amplication/code-gen-types";
 import { ModuleService } from "../module/module.service";
 import { ModuleActionService } from "../moduleAction/moduleAction.service";
 import { AmplicationLogger } from "@amplication/util/nestjs/logging";
@@ -60,6 +60,8 @@ import { ModuleDtoService } from "../moduleDto/moduleDto.service";
 import { types } from "@amplication/code-gen-types";
 import { DefaultModuleForEntityNotFoundError } from "../module/DefaultModuleForEntityNotFoundError";
 import { ModuleDto } from "../moduleDto/dto/ModuleDto";
+import { EnumCodeGenerator } from "../resource/dto/EnumCodeGenerator";
+import { CreateOneResourceArgs } from "../resource/dto";
 
 const INVITATION_EXPIRATION_DAYS = 7;
 
@@ -189,7 +191,8 @@ export class WorkspaceService {
   async createWorkspace(
     accountId: string,
     args: Prisma.WorkspaceCreateArgs,
-    currentWorkspaceId?: string
+    currentWorkspaceId?: string,
+    connectToDemoRepo?: boolean
   ): Promise<Workspace> {
     if (await this.shouldBlockWorkspaceCreation(currentWorkspaceId)) {
       const message = "Your current plan does not allow creating workspaces";
@@ -226,7 +229,7 @@ export class WorkspaceService {
     await this.billingService.provisionCustomer(workspace.id);
 
     const [user] = workspace.users;
-    await this.projectService.createProject(
+    const newProject = await this.projectService.createProject(
       {
         data: {
           name: "Sample Project",
@@ -235,6 +238,10 @@ export class WorkspaceService {
       },
       user.id
     );
+
+    if (connectToDemoRepo) {
+      await this.projectService.createDemoRepo(newProject.id, user);
+    }
 
     await this.billingService.reportUsage(
       workspace.id,
@@ -1506,12 +1513,12 @@ export class WorkspaceService {
       generateRestApi: true,
     });
 
-    const resource = await this.resourceService.createPreviewService({
-      args: previewServiceSettings,
+    const resource = await this.resourceService.createPreviewService(
+      previewServiceSettings,
       user,
-      nonDefaultPluginsToInstall: [],
-      requireAuthenticationEntity: false,
-    });
+      [],
+      false
+    );
 
     return resource;
   }
@@ -1525,7 +1532,7 @@ export class WorkspaceService {
     generateGraphQL,
     generateRestApi,
     projectId,
-  }: CreatePreviewServiceSettingsArgs) {
+  }: CreatePreviewServiceSettingsArgs): CreateOneResourceArgs {
     return {
       data: {
         name,
@@ -1536,6 +1543,7 @@ export class WorkspaceService {
             id: projectId,
           },
         },
+        codeGenerator: EnumCodeGenerator.NodeJs,
         serviceSettings: {
           authProvider: EnumAuthProviderType.Jwt,
           adminUISettings: {

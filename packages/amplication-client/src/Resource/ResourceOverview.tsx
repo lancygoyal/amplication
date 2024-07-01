@@ -1,4 +1,4 @@
-import { EnumResourceType } from "@amplication/code-gen-types/models";
+import { EnumResourceType } from "@amplication/code-gen-types";
 import {
   CircleBadge,
   EnumButtonStyle,
@@ -26,10 +26,10 @@ import { PluginsTile } from "./PluginsTile";
 import "./ResourceOverview.scss";
 import { ServicesTile } from "./ServicesTile";
 import { TopicsTile } from "./TopicsTile";
-import { BtmButton, EnumButtonLocation } from "./break-the-monolith/BtmButton";
 import { resourceThemeMap } from "./constants";
 import AppGitStatusPanel from "./git/AppGitStatusPanel";
 import { useResourceSummary } from "./hooks/useResourceSummary";
+import { CodeGeneratorImage } from "../Components/CodeGeneratorImage";
 
 const PAGE_TITLE = "Resource Overview";
 
@@ -92,11 +92,6 @@ const ResourceOverview = () => {
     <PageContent pageTitle={PAGE_TITLE}>
       <FlexItem>
         <FlexItem.FlexEnd direction={EnumFlexDirection.Row}>
-          <BtmButton
-            openInFullScreen
-            location={EnumButtonLocation.Resource}
-            ButtonStyle={EnumButtonStyle.GradientFull}
-          />
           {currentResource?.resourceType === EnumResourceType.Service && (
             <AddResourceFunctionalityButton
               availableCategories={availableCategories}
@@ -110,14 +105,21 @@ const ResourceOverview = () => {
       <Panel panelStyle={EnumPanelStyle.Bold}>
         <FlexItem itemsAlign={EnumItemsAlign.Center}>
           <FlexItem.FlexStart direction={EnumFlexDirection.Column}>
-            <CircleBadge
-              size="large"
-              name={currentResource?.name || ""}
-              color={
-                resourceThemeMap[currentResource?.resourceType].color ||
-                "transparent"
-              }
-            />
+            <FlexItem
+              direction={EnumFlexDirection.Row}
+              gap={EnumGapSize.Small}
+              itemsAlign={EnumItemsAlign.Center}
+            >
+              <CircleBadge
+                size="large"
+                name={currentResource?.name || ""}
+                color={
+                  resourceThemeMap[currentResource?.resourceType].color ||
+                  "transparent"
+                }
+              />
+              <CodeGeneratorImage resource={currentResource} size="medium" />
+            </FlexItem>
             <Text textStyle={EnumTextStyle.H3}>{currentResource?.name}</Text>
             <Text textStyle={EnumTextStyle.Description}>
               {currentResource?.description}

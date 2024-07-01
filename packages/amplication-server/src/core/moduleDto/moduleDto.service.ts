@@ -36,6 +36,8 @@ import { SegmentAnalyticsService } from "../../services/segmentAnalytics/segment
 import { EnumEventType } from "../../services/segmentAnalytics/segmentAnalyticsEventType.types";
 import { QueryMode } from "../../enums/QueryMode";
 import { validateCustomActionsEntitlement } from "../block/block.util";
+import { JsonArray } from "type-fest";
+import { PropertyTypeDef } from "./dto/propertyTypes/PropertyTypeDef";
 
 const DEFAULT_DTO_PROPERTY: Omit<ModuleDtoProperty, "name"> = {
   isArray: false,
@@ -47,6 +49,11 @@ const DEFAULT_DTO_PROPERTY: Omit<ModuleDtoProperty, "name"> = {
     },
   ],
 };
+
+const UNSUPPORTED_TYPES = [
+  EnumModuleDtoPropertyType.Null,
+  EnumModuleDtoPropertyType.Undefined,
+];
 
 @Injectable()
 export class ModuleDtoService extends BlockTypeService<
@@ -81,7 +88,7 @@ export class ModuleDtoService extends BlockTypeService<
   ): Promise<ModuleDto[]> {
     //todo: extend query to return shared dtos from other resources in the project
 
-    return super.findMany(args);
+    return this.findMany(args);
   }
 
   async findMany(
@@ -100,19 +107,6 @@ export class ModuleDtoService extends BlockTypeService<
     //when undefined the default value is true
     const includeCustomDtosBoolean = includeCustomDtos !== false;
     const includeDefaultDtosBoolean = includeDefaultDtos !== false;
-
-    if (user) {
-      const subscription = await this.billingService.getSubscription(
-        user.workspace?.id
-      );
-
-      await this.analytics.trackWithContext({
-        properties: {
-          planType: subscription.subscriptionPlan,
-        },
-        event: EnumEventType.SearchAPIs,
-      });
-    }
 
     if (includeCustomDtosBoolean && includeDefaultDtosBoolean) {
       return super.findMany(prismaArgs);
@@ -222,12 +216,28 @@ export class ModuleDtoService extends BlockTypeService<
       event: EnumEventType.CreateUserDTO,
     });
 
+    //make sure the properties are initialized correctly
+    const properties: ModuleDtoProperty[] = (
+      args.properties as unknown as JsonArray
+    )?.map((property) => {
+      return {
+        ...DEFAULT_DTO_PROPERTY,
+        ...property,
+        propertyTypes: property.propertyTypes.map((propertyType) => {
+          return {
+            ...DEFAULT_DTO_PROPERTY.propertyTypes[0],
+            ...propertyType,
+          };
+        }),
+      };
+    });
+
     return super.create(
       {
         ...args,
         data: {
           ...args.data,
-          properties: [],
+          properties: (properties as unknown as JsonArray) ?? [],
           enabled: true,
           dtoType: EnumModuleDtoType.Custom,
         },
@@ -294,7 +304,10 @@ export class ModuleDtoService extends BlockTypeService<
 
     const moduleDto = await super.findOne(args);
 
-    if (moduleDto?.dtoType !== EnumModuleDtoType.Custom) {
+    if (
+      moduleDto?.dtoType !== EnumModuleDtoType.Custom &&
+      moduleDto?.dtoType !== EnumModuleDtoType.CustomEnum
+    ) {
       throw new AmplicationError(
         "Cannot delete a default DTO. To delete it, you must delete the entity"
       );
@@ -727,6 +740,12 @@ export class ModuleDtoService extends BlockTypeService<
       }
     }
 
+    await this.validateTypes(
+      dto.resourceId,
+      args.data.propertyTypes,
+      UNSUPPORTED_TYPES
+    );
+
     const existingProperty = dto.properties[existingPropertyIndex];
 
     const newProperty = {
@@ -945,18 +964,35 @@ export class ModuleDtoService extends BlockTypeService<
     if (!this.customActionsEnabled) {
       return null;
     }
+    await validateCustomActionsEntitlement(
+      user.workspace?.id,
+      this.billingService,
+      this.logger
+    );
 
     await this.validateModuleDtoName(
       args.data.name,
       args.data.resource.connect.id
     );
 
+    const subscription = await this.billingService.getSubscription(
+      user.workspace?.id
+    );
+
+    await this.analytics.trackWithContext({
+      properties: {
+        name: args.data.name,
+        planType: subscription.subscriptionPlan,
+      },
+      event: EnumEventType.CreateUserDTO,
+    });
+
     return super.create(
       {
         ...args,
         data: {
           ...args.data,
-          properties: [],
+          members: (args.members as unknown as JsonArray) ?? [],
           enabled: true,
           dtoType: EnumModuleDtoType.CustomEnum,
         },
@@ -1126,5 +1162,53 @@ export class ModuleDtoService extends BlockTypeService<
     );
 
     return deleted;
+  }
+
+  async validateTypes(
+    resourceId: string,
+    types: PropertyTypeDef[],
+    unsupportedTypes?: EnumModuleDtoPropertyType[]
+  ): Promise<void> {
+    for (const type of types) {
+      if (!type) {
+        throw new AmplicationError("Type is required");
+      }
+
+      if (!type.type) {
+        throw new AmplicationError("Type is required");
+      }
+
+      if (unsupportedTypes?.includes(type.type as EnumModuleDtoPropertyType)) {
+        throw new AmplicationError(
+          `The type ${type.type} is not supported yet`
+        );
+      }
+
+      if (
+        type.type === EnumModuleDtoPropertyType.Dto ||
+        type.type === EnumModuleDtoPropertyType.Enum
+      ) {
+        if (!type.dtoId) {
+          throw new AmplicationError(
+            `dtoId is required when type is ${type.type}`
+          );
+        }
+
+        const existingDto = await this.availableDtosForResource({
+          where: {
+            resource: {
+              id: resourceId,
+            },
+            id: {
+              equals: type.dtoId,
+            },
+          },
+        });
+
+        if (!existingDto || existingDto.length === 0) {
+          throw new AmplicationError(`Dto with id ${type.dtoId} not found`);
+        }
+      }
+    }
   }
 }

@@ -93,6 +93,9 @@ export class Resource {
   })
   codeGeneratorStrategy?: keyof typeof CodeGeneratorVersionStrategy;
 
+  // instead of exposing the value of this field, we expose an enum using resolveField on the resourceResolver
+  codeGeneratorName?: string;
+
   @Field(() => Boolean, { nullable: false, defaultValue: true })
   licensed: boolean;
 

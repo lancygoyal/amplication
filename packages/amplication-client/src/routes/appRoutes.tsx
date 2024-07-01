@@ -179,7 +179,7 @@ export const Routes: RouteDef[] = [
                 isAnalytics: true,
               },
               {
-                path: "/:workspace([A-Za-z0-9-]{20,})/:project([A-Za-z0-9-]{20,})/dotnet-promote",
+                path: "/:workspace([A-Za-z0-9-]{20,})/:project([A-Za-z0-9-]{20,})/dotnet-upgrade",
                 Component: lazy(
                   () => import("../VersionControl/DotNetPromotePage")
                 ),
@@ -192,11 +192,9 @@ export const Routes: RouteDef[] = [
               {
                 path: "/:workspace([A-Za-z0-9-]{20,})/:project([A-Za-z0-9-]{20,})/welcome",
                 Component: lazy(
-                  () =>
-                    import("../Resource/create-resource/CreateServiceWizard")
+                  () => import("../Assistant/OnboardingWithJovuPage")
                 ),
-                moduleName: "CreateServiceWizard",
-                moduleClass: "create-service-wizard",
+                moduleName: "OnboardingWithJovuPage",
                 routeTrackType: "",
                 exactPath: true,
                 isAnalytics: true,
