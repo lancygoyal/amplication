@@ -1,16 +1,14 @@
 import { Dialog } from "@amplication/ui/design-system";
 import { ApolloError } from "@apollo/client";
 import { EnumGitProvider } from "../../../models";
-import GitCreateRepo from "./GitCreateRepo/GitCreateRepo";
-import WizardGitCreateRepo from "./GitCreateRepo/WizardGitCreateRepo";
+import GitCreateRepoDialog from "./GitCreateRepo/GitCreateRepoDialog";
 import GitRepos, {
   GitRepositoryCreatedData,
   GitRepositorySelected,
 } from "./GitRepos/GithubRepos";
-import { GitOrganizationFromGitRepository } from "../SyncWithGithubPage";
-import "./GitDialogsContainer.scss";
+import { GitOrganizationFromGitRepository } from "../ResourceGitSettingsPage";
 import { useCallback } from "react";
-import { PROVIDERS_DISPLAY_NAME } from "../../constants";
+import { GIT_PROVIDER_NAME } from "../constants";
 
 type Props = {
   gitOrganization: GitOrganizationFromGitRepository;
@@ -53,7 +51,7 @@ export default function GitDialogsContainer({
     openCreateNewRepo();
   }, [closeSelectRepoDialog, openCreateNewRepo]);
 
-  const providerDisplayName = PROVIDERS_DISPLAY_NAME[gitProvider];
+  const providerDisplayName = GIT_PROVIDER_NAME[gitProvider];
 
   return (
     <div>
@@ -68,6 +66,7 @@ export default function GitDialogsContainer({
           onGitRepositoryConnected={onSelectGitRepository}
           gitProvider={gitProvider}
           openCreateNewRepo={handleCreateNewRepoClick}
+          srcType={src}
         />
       </Dialog>
       <Dialog
@@ -79,24 +78,15 @@ export default function GitDialogsContainer({
         Please make sure that you allow popup windows in the browser
       </Dialog>
       <Dialog
-        className="git-create-dialog"
         isOpen={gitCreateRepoOpen}
         title="Create new repository"
         onDismiss={onGitCreateRepositoryClose}
       >
-        {src === "serviceWizard" ? (
-          <WizardGitCreateRepo
-            repoCreated={repoCreated}
-            onCreateGitRepository={onGitCreateRepository}
-            gitOrganization={gitOrganization}
-          ></WizardGitCreateRepo>
-        ) : (
-          <GitCreateRepo
-            gitOrganization={gitOrganization}
-            repoCreated={repoCreated}
-            onCreateGitRepository={onGitCreateRepository}
-          />
-        )}
+        <GitCreateRepoDialog
+          repoCreated={repoCreated}
+          onCreateGitRepository={onGitCreateRepository}
+          gitOrganization={gitOrganization}
+        ></GitCreateRepoDialog>
       </Dialog>
     </div>
   );

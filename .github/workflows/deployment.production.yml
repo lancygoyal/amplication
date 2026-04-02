@@ -6,11 +6,12 @@ on:
 
 env:
   NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
+  NX_REJECT_UNKNOWN_LOCAL_CACHE: 0
 
 jobs:
   preparation:
     name: Preparation
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     outputs:
       previous-tag: ${{ steps.base.outputs.tag }}
       affected-apps: ${{ steps.configure-nx.outputs.affected-apps }}
@@ -55,7 +56,7 @@ jobs:
       - name: Evaluate affected projects
         id: configure-nx
         env:
-          NX_EXCLUDE: "--exclude=data-service-generator"
+          NX_EXCLUDE: "--exclude=data-service-generator,generator-blueprints"
         run: |
           echo affected-apps=$(npx nx print-affected --base=${{ steps.base.outputs.tag }} --type=app $NX_FORCE_ALL ${NX_EXCLUDE} | jq -c .projects) >> $GITHUB_OUTPUT
           echo affected-lib=$(npx nx print-affected --base=${{ steps.base.outputs.tag }} --type=lib $NX_FORCE_ALL $NX_EXCLUDE | jq -c .projects) >> $GITHUB_OUTPUT
@@ -67,7 +68,7 @@ jobs:
 
   package:
     name: Package
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
         project: ${{ fromJson(needs.preparation.outputs.affected-package-container) }}
@@ -132,7 +133,7 @@ jobs:
 
   deployment-container:
     name: Deployment container
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     environment: "production"
     needs: [preparation, package]
     steps:
@@ -174,20 +175,3 @@ jobs:
             Releases: https://github.com/amplication/amplication/releases
           labels: "release"
           reviewers: "${{ github.actor }}"
-
-  deployment-static:
-    name: Deployment static
-    needs: preparation
-    if: ${{ needs.preparation.outputs.affected-deploy-static != '[]' && needs.preparation.outputs.affected-deploy-static != ''}}
-    strategy:
-      matrix:
-        project: ${{ fromJson(needs.preparation.outputs.affected-deploy-static) }}
-    uses: ./.github/workflows/deployment.static.template.yml
-    with:
-      environment-name: "production"
-      project-name: ${{ matrix.project }}
-      deploy-type: "static"
-    secrets:
-      NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}

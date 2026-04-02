@@ -8,6 +8,10 @@ import { AppRouteProps } from "../routes/routesUtil";
 import CommitList from "./CommitList";
 import "./CommitsPage.scss";
 import BuildPage from "./BuildPage";
+import CommitButton from "./CommitButton";
+import { useProjectBaseUrl } from "../util/useProjectBaseUrl";
+import { EnumCommitStrategy, EnumResourceTypeGroup } from "../models";
+import useBreadcrumbs from "../Layout/useBreadcrumbs";
 
 type Props = AppRouteProps & {
   match: match<{
@@ -18,8 +22,10 @@ type Props = AppRouteProps & {
 
 const PAGE_TITLE = "Commits";
 
-const CommitsPage: React.FC<Props> = ({ moduleClass, innerRoutes }) => {
+const CommitsPage: React.FC<Props> = ({ moduleClass, innerRoutes, match }) => {
   const history = useHistory();
+
+  useBreadcrumbs("Commits", match.url);
 
   const commitMatch = useRouteMatch<{
     workspace: string;
@@ -38,8 +44,8 @@ const CommitsPage: React.FC<Props> = ({ moduleClass, innerRoutes }) => {
 
   const { build: buildId } = buildMatch?.params ?? {};
 
-  const { currentProject, currentWorkspace, commitUtils } =
-    useContext(AppContext);
+  const { commitUtils } = useContext(AppContext);
+  const { baseUrl } = useProjectBaseUrl();
 
   const handleOnLoadMoreClick = useCallback(() => {
     commitUtils.refetchCommitsData(false);
@@ -48,16 +54,8 @@ const CommitsPage: React.FC<Props> = ({ moduleClass, innerRoutes }) => {
   useEffect(() => {
     if (commitId) return;
     commitUtils.commits.length &&
-      history.push(
-        `/${currentWorkspace?.id}/${currentProject?.id}/commits/${commitUtils.commits[0].id}`
-      );
-  }, [
-    commitId,
-    commitUtils.commits,
-    currentProject?.id,
-    currentWorkspace?.id,
-    history,
-  ]);
+      history.push(`${baseUrl}/commits/${commitUtils.commits[0].id}`);
+  }, [commitId, commitUtils.commits, baseUrl, history]);
 
   return buildId ? (
     <BuildPage match={undefined} buildId={buildId} />
@@ -82,10 +80,24 @@ const CommitsPage: React.FC<Props> = ({ moduleClass, innerRoutes }) => {
         innerRoutes
       ) : (
         <>
-          <EmptyState
-            message="There are no commits to show. "
-            image={EnumImages.CommitEmptyState}
-          />
+          {commitUtils.commitsLoading ? (
+            <EmptyState
+              message="Loading commits..."
+              image={EnumImages.CommitEmptyState}
+            ></EmptyState>
+          ) : (
+            <EmptyState
+              message="There are no commits to show. "
+              image={EnumImages.CommitEmptyState}
+            >
+              <CommitButton
+                resourceTypeGroup={EnumResourceTypeGroup.Services}
+                hasMultipleServices={true}
+                hasPendingChanges={true}
+                commitStrategy={EnumCommitStrategy.All}
+              />
+            </EmptyState>
+          )}
         </>
       )}
     </PageContent>

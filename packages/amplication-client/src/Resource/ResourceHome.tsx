@@ -2,17 +2,24 @@ import { TabItem } from "@amplication/ui/design-system";
 import { useContext, useMemo } from "react";
 import { match } from "react-router-dom";
 import PageLayout from "../Layout/PageLayout";
-import useBreadcrumbs from "../Layout/useBreadcrumbs";
 import useTabRoutes from "../Layout/useTabRoutes";
 import { AppContext } from "../context/appContext";
 import { AppRouteProps } from "../routes/routesUtil";
-import ResourceOverview from "./ResourceOverview";
 import {
   MenuItemLinks,
+  businessDomainRoutes,
   linksMap,
   resourceMenuLayout,
   setResourceUrlLink,
 } from "./resourceMenuUtils";
+import { useResourceBaseUrl } from "../util/useResourceBaseUrl";
+import {
+  ResourceContextInterface,
+  ResourceContextProvider,
+} from "../context/resourceContext";
+import { useLastSuccessfulGitBuild } from "../VersionControl/hooks/useLastSuccessfulGitBuild";
+import OverviewContainer from "./ResourceOverview/OverviewContainer";
+import useResourcePermissions from "./hooks/useResourcePermissions";
 
 type Props = AppRouteProps & {
   match: match<{
@@ -34,6 +41,8 @@ const ResourceHome = ({
   const { currentResource, currentWorkspace, currentProject, pendingChanges } =
     useContext(AppContext);
 
+  const { isPlatformConsole } = useResourceBaseUrl();
+
   const tabs: TabItem[] = useMemo(() => {
     const fixedRoutes = resourceMenuLayout[currentResource?.resourceType]?.map(
       (menuItem: MenuItemLinks) => {
@@ -44,13 +53,21 @@ const ResourceHome = ({
 
         const toUrl = linksMap[menuItem].to;
 
+        if (
+          !currentResource?.blueprint?.useBusinessDomain &&
+          businessDomainRoutes.includes(menuItem)
+        ) {
+          return null;
+        }
+
         return {
           name: linksMap[menuItem].title,
           to: setResourceUrlLink(
             currentWorkspace.id,
             currentProject.id,
             currentResource.id,
-            toUrl
+            toUrl,
+            isPlatformConsole
           ),
           iconName: linksMap[menuItem].icon,
           exact: false,
@@ -58,29 +75,51 @@ const ResourceHome = ({
         };
       }
     );
+
     return [
       {
         name: OVERVIEW,
         to: match.url,
         exact: true,
       },
-      ...(fixedRoutes || []),
+      ...(fixedRoutes?.filter((fixRoute) => fixRoute !== null) || []),
     ];
-  }, [currentResource, currentWorkspace, currentProject, pendingChanges]);
+  }, [
+    currentResource,
+    isPlatformConsole,
+    match.url,
+    pendingChanges,
+    currentWorkspace,
+    currentProject,
+  ]);
 
-  useBreadcrumbs(currentResource?.name, match.url);
+  const { build, buildPluginVersionMap } = useLastSuccessfulGitBuild(
+    currentResource?.id
+  );
 
   const { currentRouteIsTab } = useTabRoutes(tabRoutesDef);
 
+  const permissions = useResourcePermissions(currentResource?.id);
+
+  const context: ResourceContextInterface = {
+    resourceId: currentResource?.id,
+    resource: currentResource,
+    lastSuccessfulGitBuild: build,
+    lastSuccessfulGitBuildPluginVersions: buildPluginVersionMap,
+    permissions,
+  };
+
   return (
     <>
-      {(match.isExact || currentRouteIsTab) && currentResource ? (
-        <PageLayout className={CLASS_NAME} tabs={tabs}>
-          {match.isExact ? <ResourceOverview /> : tabRoutes}
-        </PageLayout>
-      ) : (
-        innerRoutes
-      )}
+      <ResourceContextProvider newVal={context}>
+        {(match.isExact || currentRouteIsTab) && currentResource ? (
+          <PageLayout className={CLASS_NAME} tabs={tabs}>
+            {match.isExact ? <OverviewContainer /> : tabRoutes}
+          </PageLayout>
+        ) : (
+          innerRoutes
+        )}
+      </ResourceContextProvider>
     </>
   );
 };

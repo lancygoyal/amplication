@@ -22,9 +22,18 @@ import { EntityService } from "../entity/entity.service";
 import { Environment } from "../environment/dto/Environment";
 import { EnvironmentService } from "../environment/environment.service";
 import { UserService } from "../user/user.service";
-import { ResourceCreateInput } from "./dto";
 import { ResourceResolver } from "./resource.resolver";
 import { ResourceService } from "./resource.service";
+import { ServiceSettingsService } from "../serviceSettings/serviceSettings.service";
+import { ResourceVersionService } from "../resourceVersion/resourceVersion.service";
+import { EnumBuildStatus } from "../build/dto/EnumBuildStatus";
+import { EnumBuildGitStatus } from "../build/dto/EnumBuildGitStatus";
+import { OwnershipService } from "../ownership/ownership.service";
+import { EnumOwnershipType } from "../ownership/dto/Ownership";
+import { ProjectService } from "../project/project.service";
+import { BlueprintService } from "../blueprint/blueprint.service";
+import { RelationService } from "../relation/relation.service";
+import { ResourceSettingsService } from "../resourceSettings/resourceSettings.service";
 
 const EXAMPLE_RESOURCE_ID = "exampleResourceId";
 const EXAMPLE_NAME = "exampleName";
@@ -45,8 +54,6 @@ const EXAMPLE_COMMIT_ID = "exampleCommitId";
 
 const EXAMPLE_ENTITY_ID = "exampleEntityId";
 
-const EXAMPLE_PROJECT_ID = "exampleProjectId";
-
 const EXAMPLE_ENVIRONMENT: Environment = {
   id: EXAMPLE_ENVIRONMENT_ID,
   createdAt: new Date(),
@@ -64,6 +71,8 @@ const EXAMPLE_BUILD: Build = {
   actionId: EXAMPLE_ACTION_ID,
   createdAt: new Date(),
   commitId: EXAMPLE_COMMIT_ID,
+  status: EnumBuildStatus.Completed,
+  gitStatus: EnumBuildGitStatus.Completed,
 };
 
 const EXAMPLE_ENTITY: Entity = {
@@ -127,6 +136,8 @@ const FIND_ONE_RESOURCE_QUERY = gql`
         actionId
         createdAt
         commitId
+        status
+        gitStatus
       }
       environments {
         id
@@ -168,6 +179,8 @@ const FIND_MANY_BUILDS_QUERY = gql`
         actionId
         createdAt
         commitId
+        status
+        gitStatus
       }
     }
   }
@@ -188,47 +201,6 @@ const FIND_MANY_ENVIRONMENTS_QUERY = gql`
   }
 `;
 
-const CREATE_SERVICE_MUTATION = gql`
-  mutation ($data: ResourceCreateInput!) {
-    createService(data: $data) {
-      id
-      createdAt
-      updatedAt
-      name
-      description
-      resourceType
-      gitRepositoryOverride
-      licensed
-      entities {
-        id
-        createdAt
-        updatedAt
-        resourceId
-        name
-        displayName
-        pluralDisplayName
-        customAttributes
-      }
-      builds {
-        id
-        userId
-        resourceId
-        version
-        actionId
-        createdAt
-        commitId
-      }
-      environments {
-        id
-        createdAt
-        updatedAt
-        resourceId
-        name
-        address
-      }
-    }
-  }
-`;
 const DELETE_RESOURCE_MUTATION = gql`
   mutation ($id: String!) {
     deleteResource(where: { id: $id }) {
@@ -258,6 +230,8 @@ const DELETE_RESOURCE_MUTATION = gql`
         actionId
         createdAt
         commitId
+        status
+        gitStatus
       }
       environments {
         id
@@ -299,6 +273,8 @@ const UPDATE_RESOURCE_MUTATION = gql`
         actionId
         createdAt
         commitId
+        status
+        gitStatus
       }
       environments {
         id
@@ -335,6 +311,24 @@ const findManyEnvironmentsMock = jest.fn(() => {
 });
 const userServiceFindUserMock = jest.fn(() => EXAMPLE_USER);
 
+const getServiceSettingsBlockMock = jest.fn(() => {
+  return {
+    id: "exampleServiceSettingsBlockId",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    resource: EXAMPLE_RESOURCE,
+    settings: {
+      exampleSetting: "exampleValue",
+    },
+  };
+});
+
+const ownershipServiceGetOwnershipMock = jest.fn(() => ({
+  id: "exampleOwnershipId",
+  owner: EXAMPLE_USER,
+  ownershipType: EnumOwnershipType.User,
+}));
+
 const mockCanActivate = jest.fn(mockGqlAuthGuardCanActivate(EXAMPLE_USER));
 
 describe("ResourceResolver", () => {
@@ -356,9 +350,27 @@ describe("ResourceResolver", () => {
           })),
         },
         {
+          provide: ProjectService,
+          useClass: jest.fn(() => ({
+            findUnique: jest.fn(() => ({})),
+          })),
+        },
+        {
           provide: UserService,
           useClass: jest.fn(() => ({
             findUser: userServiceFindUserMock,
+          })),
+        },
+        {
+          provide: BlueprintService,
+          useClass: jest.fn(() => ({
+            blueprint: jest.fn(),
+          })),
+        },
+        {
+          provide: RelationService,
+          useClass: jest.fn(() => ({
+            findMany: jest.fn(),
           })),
         },
         {
@@ -368,9 +380,19 @@ describe("ResourceResolver", () => {
           })),
         },
         {
+          provide: ResourceVersionService,
+          useClass: jest.fn(() => ({})),
+        },
+        {
           provide: BuildService,
           useClass: jest.fn(() => ({
             findMany: findManyBuildMock,
+          })),
+        },
+        {
+          provide: ServiceSettingsService,
+          useClass: jest.fn(() => ({
+            getServiceSettingsBlock: getServiceSettingsBlockMock,
           })),
         },
         {
@@ -394,6 +416,16 @@ describe("ResourceResolver", () => {
           useClass: jest.fn(() => ({
             get: jest.fn(),
           })),
+        },
+        {
+          provide: OwnershipService,
+          useClass: jest.fn(() => ({
+            getOwnership: ownershipServiceGetOwnershipMock,
+          })),
+        },
+        {
+          provide: ResourceSettingsService,
+          useClass: jest.fn(() => ({})),
         },
       ],
       imports: [
@@ -448,8 +480,8 @@ describe("ResourceResolver", () => {
         ],
       },
     });
-    expect(resourceMock).toBeCalledTimes(1);
-    expect(resourceMock).toBeCalledWith(args);
+    expect(resourceMock).toHaveBeenCalledTimes(1);
+    expect(resourceMock).toHaveBeenCalledWith(args);
   });
 
   it("should find many entities", async () => {
@@ -478,8 +510,8 @@ describe("ResourceResolver", () => {
         ],
       },
     });
-    expect(entitiesMock).toBeCalledTimes(1);
-    expect(entitiesMock).toBeCalledWith(args);
+    expect(entitiesMock).toHaveBeenCalledTimes(1);
+    expect(entitiesMock).toHaveBeenCalledWith(args);
   });
 
   it("should find many builds", async () => {
@@ -501,8 +533,8 @@ describe("ResourceResolver", () => {
         ],
       },
     });
-    expect(findManyBuildMock).toBeCalledTimes(1);
-    expect(findManyBuildMock).toBeCalledWith(args);
+    expect(findManyBuildMock).toHaveBeenCalledTimes(1);
+    expect(findManyBuildMock).toHaveBeenCalledWith(args);
   });
 
   it("should find many environments", async () => {
@@ -522,61 +554,10 @@ describe("ResourceResolver", () => {
         ],
       },
     });
-    expect(findManyEnvironmentsMock).toBeCalledTimes(1);
-    expect(findManyEnvironmentsMock).toBeCalledWith({
+    expect(findManyEnvironmentsMock).toHaveBeenCalledTimes(1);
+    expect(findManyEnvironmentsMock).toHaveBeenCalledWith({
       where: { resource: { id: EXAMPLE_RESOURCE_ID } },
     });
-  });
-
-  it("should create a service", async () => {
-    const resourceCreateInput: ResourceCreateInput = {
-      name: EXAMPLE_NAME,
-      description: EXAMPLE_DESCRIPTION,
-      resourceType: EnumResourceType.Service,
-      project: { connect: { id: EXAMPLE_PROJECT_ID } },
-    };
-    const res = await apolloClient.executeOperation({
-      query: CREATE_SERVICE_MUTATION,
-      variables: {
-        data: resourceCreateInput,
-      },
-    });
-    expect(res.errors).toBeUndefined();
-    expect(res.data).toEqual({
-      createService: {
-        ...EXAMPLE_RESOURCE,
-        resourceType: EnumResourceType.Service,
-        createdAt: EXAMPLE_RESOURCE.createdAt.toISOString(),
-        updatedAt: EXAMPLE_RESOURCE.updatedAt.toISOString(),
-        entities: [
-          {
-            ...EXAMPLE_ENTITY,
-            createdAt: EXAMPLE_ENTITY.createdAt.toISOString(),
-            updatedAt: EXAMPLE_ENTITY.updatedAt.toISOString(),
-          },
-        ],
-        builds: [
-          {
-            ...EXAMPLE_BUILD,
-            createdAt: EXAMPLE_BUILD.createdAt.toISOString(),
-          },
-        ],
-        environments: [
-          {
-            ...EXAMPLE_ENVIRONMENT,
-            createdAt: EXAMPLE_ENVIRONMENT.createdAt.toISOString(),
-            updatedAt: EXAMPLE_ENVIRONMENT.updatedAt.toISOString(),
-          },
-        ],
-      },
-    });
-    expect(createServiceMock).toBeCalledTimes(1);
-    expect(createServiceMock).toBeCalledWith(
-      {
-        data: resourceCreateInput,
-      },
-      EXAMPLE_USER
-    );
   });
 
   it("should delete a resource", async () => {
@@ -614,8 +595,8 @@ describe("ResourceResolver", () => {
         ],
       },
     });
-    expect(deleteResourceMock).toBeCalledTimes(1);
-    expect(deleteResourceMock).toBeCalledWith(
+    expect(deleteResourceMock).toHaveBeenCalledTimes(1);
+    expect(deleteResourceMock).toHaveBeenCalledWith(
       {
         where: { id: EXAMPLE_RESOURCE_ID },
       },
@@ -659,10 +640,13 @@ describe("ResourceResolver", () => {
         ],
       },
     });
-    expect(updateResourceMock).toBeCalledTimes(1);
-    expect(updateResourceMock).toBeCalledWith({
-      data: { name: EXAMPLE_NAME },
-      where: { id: EXAMPLE_RESOURCE_ID },
-    });
+    expect(updateResourceMock).toHaveBeenCalledTimes(1);
+    expect(updateResourceMock).toHaveBeenCalledWith(
+      {
+        data: { name: EXAMPLE_NAME },
+        where: { id: EXAMPLE_RESOURCE_ID },
+      },
+      EXAMPLE_USER
+    );
   });
 });

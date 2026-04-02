@@ -2,11 +2,6 @@ import { ILogger } from "@amplication/util/logging";
 import { createAppAuth } from "@octokit/auth-app";
 import { components } from "@octokit/openapi-types";
 import { App, Octokit } from "octokit";
-import { createPullRequest } from "octokit-plugin-create-pull-request";
-import {
-  Changes,
-  UpdateFunction,
-} from "octokit-plugin-create-pull-request/dist-types/types";
 import { GitProvider } from "../../git-provider.interface";
 import {
   Branch,
@@ -14,7 +9,6 @@ import {
   CreateBranchArgs,
   CreatePullRequestCommentArgs,
   GitProviderCreatePullRequestArgs,
-  CreatePullRequestFromFilesArgs,
   CreateRepositoryArgs,
   EnumGitOrganizationType,
   EnumGitProvider,
@@ -36,6 +30,9 @@ import {
   CurrentUser,
   GitHubProviderOrganizationProperties,
   Commit,
+  GitFolderContentItem,
+  getFolderContentArgs,
+  GitFolderContent,
 } from "../../types";
 import { ConverterUtil } from "../../utils/convert-to-number";
 import { NotImplementedError } from "../../utils/custom-error";
@@ -48,6 +45,16 @@ import { NoChangesOnPullRequest } from "../../errors/NoChangesOnPullRequest";
 const GITHUB_FILE_TYPE = "file";
 
 type DirectoryItem = components["schemas"]["content-directory"][number];
+
+const DIRECTORY_ITEM_TYPE_TO_GIT_FOLDER_CONTENT_ITEM_TYPE: Record<
+  DirectoryItem["type"],
+  GitFolderContentItem["type"]
+> = {
+  file: "File",
+  dir: "Dir",
+  submodule: "Other",
+  symlink: "Other",
+};
 
 export class GithubService implements GitProvider {
   private app: App;
@@ -63,6 +70,14 @@ export class GithubService implements GitProvider {
     private readonly providerConfiguration: GitHubConfiguration,
     private readonly logger: ILogger
   ) {}
+
+  getAuthData(): Promise<OAuthTokens | null> {
+    return Promise.resolve(null);
+  }
+
+  isAuthDataRefreshed(): Promise<boolean> {
+    return Promise.resolve(false);
+  }
 
   async init(): Promise<void> {
     const {
@@ -158,7 +173,6 @@ export class GithubService implements GitProvider {
       url: repo.html_url,
       private: repo.private,
       fullName: repo.full_name,
-      admin: repo.permissions?.admin || false,
       defaultBranch: repo.default_branch,
     }));
   }
@@ -182,7 +196,6 @@ export class GithubService implements GitProvider {
       url: repo.html_url,
       private: repo.private,
       fullName: repo.full_name,
-      admin: repo.permissions.admin,
     }));
 
     return {
@@ -223,11 +236,10 @@ export class GithubService implements GitProvider {
       url,
     };
     if (!permissions) {
-      return { ...baseRepository, admin: false };
+      return { ...baseRepository };
     }
     const { admin } = permissions;
     return {
-      admin,
       defaultBranch,
       fullName,
       name,
@@ -275,7 +287,6 @@ export class GithubService implements GitProvider {
       url: repo.html_url,
       private: repo.private,
       fullName: repo.full_name,
-      admin: repo.permissions?.admin || false,
       defaultBranch: repo.default_branch,
     };
   }
@@ -318,6 +329,42 @@ export class GithubService implements GitProvider {
     };
   }
 
+  async getFolderContent({
+    owner,
+    repositoryName,
+    path,
+    ref,
+  }: getFolderContentArgs): Promise<GitFolderContent> {
+    try {
+      // Fetch the contents of the directory
+      const response = await this.octokit.rest.repos.getContent({
+        owner,
+        repo: repositoryName,
+        path,
+        ref: ref ?? undefined,
+      });
+
+      // Check if the response is an array (directory contents)
+      if (Array.isArray(response.data)) {
+        const content = response.data.map((item) => ({
+          name: item.name,
+          path: item.path,
+          type: DIRECTORY_ITEM_TYPE_TO_GIT_FOLDER_CONTENT_ITEM_TYPE[item.type],
+        }));
+        return { content };
+      }
+
+      // If the response is not an array, it's not a directory
+      throw new Error("The specified path is not a directory");
+    } catch (error) {
+      this.logger.error(
+        `Failed to fetch folder contents for ${owner}/${repositoryName}/${path}`,
+        error
+      );
+      throw error;
+    }
+  }
+
   async getFile(file: GetFileArgs): Promise<GitFile | null> {
     const { owner, repositoryName, path, ref } = file;
 
@@ -346,47 +393,6 @@ export class GithubService implements GitProvider {
       }
     }
     return null;
-  }
-
-  async createPullRequestFromFiles(
-    createPullRequestFromFilesArgs: CreatePullRequestFromFilesArgs
-  ): Promise<string> {
-    const {
-      owner,
-      repositoryName,
-      pullRequestTitle,
-      pullRequestBody,
-      branchName,
-      files,
-      commitMessage,
-    } = createPullRequestFromFilesArgs;
-    // We are not using this.octokit, instead we are using a local octokit client because we need the plugin
-    const octokitWithPlugins = Octokit.plugin(createPullRequest);
-    const token = await this.getInstallationAuthToken(this.installationId);
-    const octokit = new octokitWithPlugins({
-      auth: token,
-    });
-
-    const gitHubFiles = this.convertFilesToGitHubFiles(files);
-    const pr = await octokit.createPullRequest({
-      owner,
-      repo: repositoryName,
-      title: pullRequestTitle,
-      body: pullRequestBody,
-      head: branchName,
-      update: true,
-      changes: [
-        {
-          /* optional: if `files` is not passed, an empty commit is created instead */
-          files: gitHubFiles,
-          commit: commitMessage,
-        },
-      ],
-    });
-    if (pr === null) {
-      throw new Error("We had a problem creating the pull request");
-    }
-    return pr.data.html_url;
   }
 
   async getPullRequest({
@@ -608,26 +614,6 @@ export class GithubService implements GitProvider {
       },
     } = lastCommitDataRef;
     return { sha: lastCommitNodes[0].oid };
-  }
-
-  private convertFilesToGitHubFiles(
-    files: UpdateFile[]
-  ): Required<Changes["files"]> {
-    return files.reduce((acc, file) => {
-      if (file.skipIfExists) {
-        // do not create the file if it already exist
-        const gitHubUpdateFn: UpdateFunction = ({ exists }) => {
-          if (exists) {
-            return null;
-          }
-          return file.content;
-        };
-        acc[file.path] = gitHubUpdateFn;
-      } else {
-        acc[file.path] = file.content;
-      }
-      return acc;
-    }, {} as Omit<Required<Changes["files"]>, "undefined">);
   }
 
   async createPullRequestComment(

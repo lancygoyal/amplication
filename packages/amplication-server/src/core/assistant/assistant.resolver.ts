@@ -9,6 +9,7 @@ import { UserEntity } from "../../decorators/user.decorator";
 import { User } from "../../models";
 import { AssistantMessageDelta } from "./dto/AssistantMessageDelta";
 import { KafkaMessage } from "kafkajs";
+import { AuthUser } from "../auth/types";
 
 @Resolver(() => AssistantThread)
 @UseFilters(GqlResolverExceptionsFilter)
@@ -37,7 +38,7 @@ export class AssistantResolver {
 
   @Mutation(() => AssistantThread)
   async sendAssistantMessageWithStream(
-    @UserEntity() user: User,
+    @UserEntity() user: AuthUser,
     @Args() args: SendAssistantMessageArgs
   ): Promise<AssistantThread> {
     args.context.user = user;
@@ -46,22 +47,8 @@ export class AssistantResolver {
     return this.service.processMessageWithStream(
       args.data.message,
       args.data.threadId,
-      args.context
-    );
-  }
-
-  @Mutation(() => AssistantThread)
-  async sendAssistantMessage(
-    @UserEntity() user: User,
-    @Args() args: SendAssistantMessageArgs
-  ): Promise<AssistantThread> {
-    args.context.user = user;
-    args.context.workspaceId = user.workspace.id;
-
-    return this.service.processMessage(
-      args.data.message,
-      args.data.threadId,
-      args.context
+      args.context,
+      args.data.messageType
     );
   }
 }

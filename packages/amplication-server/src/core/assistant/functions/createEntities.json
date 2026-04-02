@@ -1,0 +1,22 @@
+{
+  "name": "createEntities",
+  "description": "creates new entities in a resource. ",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "names": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "description": "the name of the entity."
+        },
+        "description": "a list of name of the entities to create."
+      },
+      "resourceId": {
+        "type": "string",
+        "description": "the ID of the resource in which the entity is created. If there are multiple resources available in the context, show the user a list of resources to choose from. If there is no resource available, do not use projectId instead"
+      }
+    },
+    "required": ["names", "resourceId"]
+  }
+}

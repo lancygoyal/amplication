@@ -1,11 +1,24 @@
-import { List, Snackbar, TabContentTitle } from "@amplication/ui/design-system";
-import React, { useCallback, useContext, useMemo, useState } from "react";
-import { match } from "react-router-dom";
+import {
+  Button,
+  EnumButtonStyle,
+  List,
+  Snackbar,
+  TabContentTitle,
+} from "@amplication/ui/design-system";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { Link, match } from "react-router-dom";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { AppRouteProps } from "../routes/routesUtil";
 import { formatError } from "../util/error";
-import usePlugins, { Plugin } from "./hooks/usePlugins";
+import usePlugins from "./hooks/usePlugins";
+import { Plugin } from "./hooks/usePluginCatalog";
 import * as models from "../models";
 import PluginsCatalogItem from "./PluginsCatalogItem";
 import { EnumImages } from "../Components/SvgThemeImage";
@@ -17,8 +30,12 @@ import { GET_ENTITIES } from "../Entity/EntityList";
 import { USER_ENTITY } from "../Entity/constants";
 import { TEntities } from "../Entity/NewEntity";
 import { CREATE_DEFAULT_ENTITIES } from "../Workspaces/queries/entitiesQueries";
-import { AppContext } from "../context/appContext";
+import { AppContext, useAppContext } from "../context/appContext";
 import useResource from "../Resource/hooks/useResource";
+import { useStiggContext } from "@stigg/react-sdk";
+import { BillingFeature } from "@amplication/util-billing-types";
+import { useResourceBaseUrl } from "../util/useResourceBaseUrl";
+import { FIND_MODULES } from "../Modules/queries/modulesQueries";
 // import DragPluginsCatalogItem from "./DragPluginCatalogItem";
 
 type Props = AppRouteProps & {
@@ -32,15 +49,23 @@ type TData = {
 };
 
 const TITLE = "Installed Plugins";
-const SUB_TITLE = "Manage your installed plugins";
+const SUB_TITLE = "Manage the plugins installed in your resource";
 
 const InstalledPlugins: React.FC<Props> = ({ match }: Props) => {
   const { resource } = match.params;
 
+  const { currentResource } = useAppContext();
+
+  const { baseUrl } = useResourceBaseUrl();
+
+  const { stigg } = useStiggContext();
+
+  const { hasAccess: canUsePrivatePlugins } = stigg.getBooleanEntitlement({
+    featureId: BillingFeature.PrivatePlugins,
+  });
+
   const {
     pluginInstallations,
-    // loadingPluginInstallations: loading,
-    // errorPluginInstallations: error,
     pluginCatalog,
     createPluginInstallation,
     createError,
@@ -49,14 +74,21 @@ const InstalledPlugins: React.FC<Props> = ({ match }: Props) => {
     pluginOrderObj,
     updatePluginOrder,
     UpdatePluginOrderError,
-    // onPluginDropped,
-  } = usePlugins(resource);
+    privatePluginCatalog,
+    loadPrivatePluginsCatalog,
+  } = usePlugins(resource, null, currentResource?.codeGenerator);
+
+  useEffect(() => {
+    if (canUsePrivatePlugins) {
+      loadPrivatePluginsCatalog();
+    }
+  }, [canUsePrivatePlugins, loadPrivatePluginsCatalog]);
 
   const [confirmInstall, setConfirmInstall] = useState<boolean>(false);
   const [isCreatePluginInstallation, setIsCreatePluginInstallation] =
     useState<boolean>(false);
 
-  const { resourceSettings } = useResource(resource);
+  const { serviceSettings } = useResource(resource);
 
   const [pluginInstallationData, setPluginInstallationData] =
     useState<Plugin>(null);
@@ -73,14 +105,14 @@ const InstalledPlugins: React.FC<Props> = ({ match }: Props) => {
   });
 
   const userEntity = useMemo(() => {
-    const authEntity = resourceSettings?.serviceSettings?.authEntityName;
+    const authEntity = serviceSettings?.serviceSettings?.authEntityName;
 
     if (!authEntity) {
       return entities?.entities?.find(
         (entity) => entity.name.toLowerCase() === USER_ENTITY.toLowerCase()
       );
     } else return authEntity;
-  }, [entities?.entities, resourceSettings?.serviceSettings?.authEntityName]);
+  }, [entities?.entities, serviceSettings?.serviceSettings?.authEntityName]);
 
   const handleInstall = useCallback(
     (plugin: Plugin) => {
@@ -103,14 +135,13 @@ const InstalledPlugins: React.FC<Props> = ({ match }: Props) => {
     [createPluginInstallation, resource]
   );
 
-  const [createDefaultEntities] = useMutation<TEntities>(
+  const [createDefaultAuthEntity] = useMutation<TEntities>(
     CREATE_DEFAULT_ENTITIES,
     {
+      refetchQueries: [FIND_MODULES],
       onCompleted: (data) => {
         if (!data) return;
-        const userEntity = data.createDefaultEntities.find(
-          (x) => x.name.toLowerCase() === USER_ENTITY.toLowerCase()
-        );
+        const userEntity = data.createDefaultAuthEntity;
         addEntity(userEntity.id);
         refetch();
         setConfirmInstall(false);
@@ -150,15 +181,15 @@ const InstalledPlugins: React.FC<Props> = ({ match }: Props) => {
     }
   );
 
-  const handleCreateDefaultEntitiesConfirmation = useCallback(() => {
-    createDefaultEntities({
+  const handleCreateDefaultAuthEntityConfirmation = useCallback(() => {
+    createDefaultAuthEntity({
       variables: {
         data: {
           resourceId: resource,
         },
       },
     }).catch(console.error);
-  }, [createDefaultEntities, resource]);
+  }, [createDefaultAuthEntity, resource]);
 
   const onOrderChange = useCallback(
     ({ id, order }: { id: string; order: number }) => {
@@ -226,26 +257,35 @@ const InstalledPlugins: React.FC<Props> = ({ match }: Props) => {
       <PluginInstallConfirmationDialog
         confirmInstall={confirmInstall}
         handleDismissInstall={handleDismissInstall}
-        handleCreateDefaultEntitiesConfirmation={
-          handleCreateDefaultEntitiesConfirmation
+        handleCreateDefaultAuthEntityConfirmation={
+          handleCreateDefaultAuthEntityConfirmation
         }
       ></PluginInstallConfirmationDialog>
       <TabContentTitle title={TITLE} subTitle={SUB_TITLE} />
       <DndProvider backend={HTML5Backend}>
         <List>
           {pluginInstallations.length &&
-            pluginInstallations.map((installation) => (
-              <PluginsCatalogItem
-                key={installation.id}
-                plugin={pluginCatalog[installation.pluginId]}
-                pluginInstallation={installation as models.PluginInstallation}
-                onOrderChange={onOrderChange}
-                onInstall={handleInstall}
-                onEnableStateChange={onEnableStateChange}
-                order={pluginOrderObj[installation.pluginId]}
-                isDraggable
-              />
-            ))}
+            pluginInstallations.map(
+              (installation) =>
+                installation && (
+                  <PluginsCatalogItem
+                    key={installation.id}
+                    plugin={
+                      pluginCatalog[installation.pluginId] ||
+                      (privatePluginCatalog &&
+                        privatePluginCatalog[installation.pluginId])
+                    }
+                    pluginInstallation={
+                      installation as models.PluginInstallation
+                    }
+                    onOrderChange={onOrderChange}
+                    onInstall={handleInstall}
+                    onEnableStateChange={onEnableStateChange}
+                    order={pluginOrderObj[installation.pluginId]}
+                    isDraggable
+                  />
+                )
+            )}
         </List>
         <Snackbar
           open={Boolean(updateError || createError)}
@@ -254,10 +294,17 @@ const InstalledPlugins: React.FC<Props> = ({ match }: Props) => {
       </DndProvider>
     </div>
   ) : (
-    <EmptyState
-      image={EnumImages.PluginInstallationEmpty}
-      message="There are no plugins to show"
-    />
+    <>
+      <TabContentTitle title={TITLE} subTitle={SUB_TITLE} />
+      <EmptyState
+        image={EnumImages.PluginInstallationEmpty}
+        message="There are no plugins to show"
+      >
+        <Link to={`${baseUrl}/plugins/catalog`}>
+          <Button buttonStyle={EnumButtonStyle.Primary}>Install Plugins</Button>
+        </Link>
+      </EmptyState>
+    </>
   );
 };
 

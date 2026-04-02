@@ -1,14 +1,13 @@
-import { Injectable, Inject } from "@nestjs/common";
-import { ServiceSettings, UpdateServiceSettingsArgs } from "./dto";
+import { Injectable } from "@nestjs/common";
+import { cloneDeep, merge } from "lodash";
 import { FindOneArgs } from "../../dto";
-import { BlockService } from "../block/block.service";
 import { EnumBlockType } from "../../enums/EnumBlockType";
-import {
-  DEFAULT_SERVICE_SETTINGS,
-  ServiceSettingsValues,
-  ServiceSettingsValuesExtended,
-} from "./constants";
 import { User } from "../../models";
+import { PrismaService } from "../../prisma";
+import { BlockService } from "../block/block.service";
+import { EnumResourceType } from "../resource/dto/EnumResourceType";
+import { DEFAULT_SERVICE_SETTINGS, ServiceSettingsValues } from "./constants";
+import { ServiceSettings, UpdateServiceSettingsArgs } from "./dto";
 import { EnumAuthProviderType } from "./dto/EnumAuthenticationProviderType";
 import { ServiceSettingsUpdateInput } from "./dto/ServiceSettingsUpdateInput";
 
@@ -17,15 +16,17 @@ export const isStringBool = (val: string | boolean): boolean =>
 
 @Injectable()
 export class ServiceSettingsService {
-  @Inject()
-  private readonly blockService: BlockService;
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly blockService: BlockService
+  ) {}
 
   async getServiceSettingsValues(
     args: FindOneArgs,
     user: User
   ): Promise<ServiceSettingsValues> {
     const { authProvider, serverSettings, adminUISettings, authEntityName } =
-      await this.getServiceSettingsBlock(args, user);
+      (await this.getServiceSettingsBlock(args, user)) || {};
 
     return {
       resourceId: args.where.id,
@@ -53,6 +54,19 @@ export class ServiceSettingsService {
       );
 
     if (!serviceSettings) {
+      const resource = await this.prisma.resource.findUnique({
+        where: {
+          id: args.where.id,
+        },
+      });
+
+      if (
+        resource.resourceType !== EnumResourceType.Service &&
+        resource.resourceType !== EnumResourceType.ServiceTemplate
+      ) {
+        return null;
+      }
+
       // create default service settings will also set the server settings > generateServer to true
       serviceSettings = await this.createDefaultServiceSettings(
         args.where.id,
@@ -161,11 +175,9 @@ export class ServiceSettingsService {
     user: User,
     serviceSettings: ServiceSettingsUpdateInput = null
   ): Promise<ServiceSettings> {
-    const settings = DEFAULT_SERVICE_SETTINGS;
+    const defaultSettings = cloneDeep(DEFAULT_SERVICE_SETTINGS);
 
-    if (serviceSettings)
-      // for backwards compatibility, we need to update the service settings with the new field (generateServer)
-      this.updateServiceGenerationSettings(settings, serviceSettings);
+    const mergedSettings = merge(defaultSettings, serviceSettings);
 
     return this.blockService.create<ServiceSettings>(
       {
@@ -175,35 +187,11 @@ export class ServiceSettingsService {
               id: resourceId,
             },
           },
-          ...settings,
+          ...mergedSettings,
           blockType: EnumBlockType.ServiceSettings,
         },
       },
       user.id
     );
-  }
-  private updateServiceGenerationSettings(
-    settings: ServiceSettingsValuesExtended,
-    serviceSettings: ServiceSettingsUpdateInput
-  ): void {
-    const { generateAdminUI, adminUIPath } = serviceSettings.adminUISettings;
-    const {
-      generateGraphQL,
-      generateRestApi,
-      generateServer = true,
-      serverPath,
-    } = serviceSettings.serverSettings;
-
-    (settings.adminUISettings = {
-      generateAdminUI: generateAdminUI,
-      adminUIPath: adminUIPath,
-    }),
-      (settings.serverSettings = {
-        generateGraphQL,
-        generateRestApi,
-        generateServer,
-        serverPath,
-      }),
-      (settings.authEntityName = serviceSettings.authEntityName);
   }
 }

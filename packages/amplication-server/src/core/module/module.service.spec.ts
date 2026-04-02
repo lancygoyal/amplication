@@ -4,7 +4,6 @@ import { EnumBlockType } from "../../enums/EnumBlockType";
 import { AmplicationError } from "../../errors/AmplicationError";
 import { Account, User } from "../../models";
 import { PrismaService } from "../../prisma/prisma.service";
-import { EnumPreviewAccountType } from "../auth/dto/EnumPreviewAccountType";
 import { BlockService } from "../block/block.service";
 import { EntityService } from "../entity/entity.service";
 import { ModuleActionService } from "../moduleAction/moduleAction.service";
@@ -45,8 +44,6 @@ const EXAMPLE_ACCOUNT: Account = {
   firstName: EXAMPLE_FIRST_NAME,
   lastName: EXAMPLE_LAST_NAME,
   password: EXAMPLE_PASSWORD,
-  previewAccountType: EnumPreviewAccountType.None,
-  previewAccountEmail: null,
 };
 
 const EXAMPLE_USER: User = {
@@ -63,6 +60,7 @@ const EXAMPLE_MODULE_DESCRIPTION = "Example Module Description";
 const EXAMPLE_RESOURCE_ID = "exampleResourceId";
 const EXAMPLE_MODULE_ID = "exampleModuleId";
 const EXAMPLE_INVALID_MODULE_NAME = "example invalid name";
+const EXAMPLE_RESERVED_MODULE_NAME = "auth";
 const EXAMPLE_ENTITY_ID = "exampleEntityId";
 
 const EXAMPLE_MODULE: Module = {
@@ -78,6 +76,7 @@ const EXAMPLE_MODULE: Module = {
   inputParameters: null,
   outputParameters: null,
   versionNumber: 0,
+  resourceId: EXAMPLE_RESOURCE_ID,
 };
 
 export const subscriptionServiceFindOneMock = jest.fn(() => {
@@ -107,11 +106,21 @@ const blockServiceCreateMock = jest.fn((args: CreateModuleArgs): Module => {
     description: data.description,
     inputParameters: null,
     outputParameters: null,
+    resourceId: EXAMPLE_RESOURCE_ID,
   };
 });
 
 const blockServiceUpdateMock = jest.fn(() => {
   return EXAMPLE_MODULE;
+});
+
+const blockServiceFindManyByBlockTypeMock = jest.fn(() => {
+  return [
+    {
+      ...EXAMPLE_MODULE,
+      name: "ExampleUniqueName",
+    },
+  ];
 });
 
 const blockServiceFindManyByBlockTypeAndSettingsMock = jest.fn(() => {
@@ -138,6 +147,7 @@ describe("ModuleService", () => {
             create: blockServiceCreateMock,
             delete: blockServiceDeleteMock,
             update: blockServiceUpdateMock,
+            findManyByBlockType: blockServiceFindManyByBlockTypeMock,
             findManyByBlockTypeAndSettings:
               blockServiceFindManyByBlockTypeAndSettingsMock,
           })),
@@ -252,6 +262,26 @@ describe("ModuleService", () => {
       )
     );
   });
+
+  it("should throw an error when creating a module with reserved name", async () => {
+    const args: CreateModuleArgs = {
+      data: {
+        resource: {
+          connect: {
+            id: EXAMPLE_RESOURCE_ID,
+          },
+        },
+        displayName: EXAMPLE_MODULE_DISPLAY_NAME,
+        name: EXAMPLE_RESERVED_MODULE_NAME,
+      },
+    };
+    await expect(service.create(args, EXAMPLE_USER)).rejects.toThrow(
+      new AmplicationError(
+        `Module name ${EXAMPLE_RESERVED_MODULE_NAME} is reserved and cannot be used.`
+      )
+    );
+  });
+
   it("should get one module", async () => {
     const args: FindOneArgs = {
       where: {
@@ -324,6 +354,92 @@ describe("ModuleService", () => {
     await expect(service.update(args, EXAMPLE_USER)).rejects.toThrow(
       new AmplicationError(
         "Cannot update the name of a default Module for entity."
+      )
+    );
+  });
+
+  it("should find all modules by name case insensitive", async () => {
+    const nameToFind = "NameToFind";
+
+    const toBeFound1 = {
+      ...EXAMPLE_MODULE,
+      name: nameToFind,
+    };
+
+    const toBeFound2 = {
+      ...EXAMPLE_MODULE,
+      name: nameToFind.toUpperCase(),
+    };
+
+    const notToBeFound = {
+      ...EXAMPLE_MODULE,
+      name: "NotToBeFound",
+    };
+
+    blockServiceFindManyByBlockTypeMock.mockReturnValue([
+      toBeFound1,
+      toBeFound2,
+      notToBeFound,
+    ]);
+
+    const results = await service.findModuleByName(
+      nameToFind,
+      EXAMPLE_RESOURCE_ID
+    );
+
+    expect(results).toEqual([toBeFound1, toBeFound2]);
+  });
+
+  it("should throw an error when creating a module with a name that is already used", async () => {
+    blockServiceFindManyByBlockTypeMock.mockReturnValue([
+      {
+        ...EXAMPLE_MODULE,
+        name: EXAMPLE_MODULE_NAME,
+      },
+    ]);
+
+    const args: CreateModuleArgs = {
+      data: {
+        resource: {
+          connect: {
+            id: EXAMPLE_RESOURCE_ID,
+          },
+        },
+        displayName: EXAMPLE_MODULE_DISPLAY_NAME,
+        name: EXAMPLE_MODULE_NAME,
+      },
+    };
+
+    await expect(service.create(args, EXAMPLE_USER)).rejects.toThrow(
+      new AmplicationError(
+        `Module with name ${args.data.name} already exists in resource ${args.data.resource.connect.id}`
+      )
+    );
+  });
+
+  it("should throw an error when updating a module with a name that is already used", async () => {
+    blockServiceFindManyByBlockTypeMock.mockReturnValue([
+      {
+        ...EXAMPLE_MODULE,
+        id: "anotherModuleId",
+        name: EXAMPLE_MODULE_NAME,
+      },
+    ]);
+
+    const args: UpdateModuleArgs = {
+      where: {
+        id: EXAMPLE_MODULE_ID,
+      },
+      data: {
+        displayName: EXAMPLE_MODULE_DISPLAY_NAME,
+        name: EXAMPLE_MODULE_NAME,
+        enabled: true,
+      },
+    };
+
+    await expect(service.update(args, EXAMPLE_USER)).rejects.toThrow(
+      new AmplicationError(
+        `Module with name ${args.data.name} already exists in resource ${EXAMPLE_RESOURCE_ID}`
       )
     );
   });

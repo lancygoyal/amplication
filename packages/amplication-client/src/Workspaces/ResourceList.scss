@@ -6,12 +6,8 @@ $resource-list-width: 400px;
   &__resources {
     min-width: $resource-list-width;
   }
-}
 
-.workspaces-layout__main_content--xl {
-  .resource-list {
-    &__content {
-      flex-direction: row;
-    }
+  &__grid-container {
+    height: calc(100% - 80px);
   }
 }

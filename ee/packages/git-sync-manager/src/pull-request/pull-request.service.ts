@@ -1,5 +1,4 @@
 import {
-  EnumPullRequestMode,
   GitClientService,
   File,
   GitProvidersConfiguration,
@@ -29,6 +28,27 @@ export class PullRequestService {
     const bitbucketClientSecret = this.configService.get<string>(
       Env.BITBUCKET_CLIENT_SECRET
     );
+    const gitLabClientId = this.configService.get<string>(Env.GITLAB_CLIENT_ID);
+    const gitLabClientSecret = this.configService.get<string>(
+      Env.GITLAB_CLIENT_SECRET
+    );
+    const gitLabRedirectUri = this.configService.get<string>(
+      Env.GITLAB_REDIRECT_URI
+    );
+
+    const azureDevopsClientId = this.configService.get<string>(
+      Env.AZURE_DEVOPS_CLIENT_ID
+    );
+    const azureDevopsClientSecret = this.configService.get<string>(
+      Env.AZURE_DEVOPS_CLIENT_SECRET
+    );
+    const azureDevopsRedirectUri = this.configService.get<string>(
+      Env.AZURE_DEVOPS_REDIRECT_URI
+    );
+    const azureDevopsTenantId = this.configService.get<string>(
+      Env.AZURE_DEVOPS_TENANT_ID
+    );
+
     const githubClientId = this.configService.get<string>(
       Env.GITHUB_APP_CLIENT_ID
     );
@@ -55,6 +75,17 @@ export class PullRequestService {
         clientId: bitbucketClientId,
         clientSecret: bitbucketClientSecret,
       },
+      gitLabConfiguration: {
+        clientId: gitLabClientId,
+        clientSecret: gitLabClientSecret,
+        redirectUri: gitLabRedirectUri,
+      },
+      azureDevopsConfiguration: {
+        clientId: azureDevopsClientId,
+        clientSecret: azureDevopsClientSecret,
+        tenantId: azureDevopsTenantId,
+        redirectUri: azureDevopsRedirectUri,
+      },
     };
   }
 
@@ -69,10 +100,10 @@ export class PullRequestService {
     gitRepositoryName: repo,
     commit,
     gitResourceMeta,
-    pullRequestMode,
     repositoryGroupName,
     baseBranchName,
     isBranchPerResource,
+    overrideCustomizableFilesInGit,
   }: CreatePrRequest.Value): Promise<{
     pullRequestUrl: string;
     diffStat: string;
@@ -83,15 +114,11 @@ export class PullRequestService {
     let head = null,
       pullRequestTitle = null;
 
-    if (pullRequestMode === EnumPullRequestMode.Accumulative) {
-      if (isBranchPerResource) {
-        head = `amplication-${resourceName}`;
-        pullRequestTitle = `for ${resourceName}`;
-      } else {
-        head = `amplication`;
-      }
+    if (isBranchPerResource) {
+      head = `amplication-${resourceName}`;
+      pullRequestTitle = `for ${resourceName}`;
     } else {
-      head = `amplication-build-${newBuildId}`;
+      head = `amplication`;
     }
 
     const changedFiles = await this.diffService.listOfChangedFiles(
@@ -122,7 +149,6 @@ export class PullRequestService {
           resourceId,
           buildId: newBuildId,
           gitProvider,
-          pullRequestMode,
         },
       }
     );
@@ -138,12 +164,12 @@ export class PullRequestService {
         commitMessage: body,
         pullRequestTitle: pullRequestTitle || title,
         pullRequestBody: body,
-        pullRequestMode,
         gitResourceMeta,
         files: PullRequestService.removeFirstSlashFromPath(changedFiles),
         resourceId,
         buildId: newBuildId,
         baseBranchName,
+        overrideCustomizableFilesInGit,
       });
 
     logger.info("Opened a new pull request", { pullRequestUrl, diffStat });

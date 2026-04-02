@@ -1,6 +1,5 @@
 import {
   EnumGitProvider,
-  EnumPullRequestMode,
   GitProviderProperties,
   GitResourceMeta,
 } from "@amplication/util/git";
@@ -45,10 +44,10 @@ export class Value {
   @ValidateNested()
   gitResourceMeta!: GitResourceMeta;
   @IsString()
-  pullRequestMode!: EnumPullRequestMode;
-  @IsString()
   @IsOptional()
   baseBranchName?: string;
   @IsBoolean()
   isBranchPerResource!: boolean;
+  @IsBoolean()
+  overrideCustomizableFilesInGit!: boolean;
 }

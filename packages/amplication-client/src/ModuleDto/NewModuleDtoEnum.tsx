@@ -1,11 +1,11 @@
 import { pascalCase } from "pascal-case";
-import { useCallback, useContext } from "react";
+import { useCallback } from "react";
 import { useHistory } from "react-router-dom";
 import { EnumButtonStyle } from "../Components/Button";
 import NewModuleChild from "../Modules/NewModuleChild";
-import { AppContext } from "../context/appContext";
 import * as models from "../models";
 import { formatError } from "../util/error";
+import { useResourceBaseUrl } from "../util/useResourceBaseUrl";
 import useModuleDto from "./hooks/useModuleDto";
 
 type Props = {
@@ -17,22 +17,6 @@ type Props = {
   navigateToDtoOnCreate?: boolean;
 };
 
-const FORM_SCHEMA = {
-  required: ["displayName"],
-  properties: {
-    displayName: {
-      type: "string",
-      minLength: 2,
-    },
-  },
-};
-
-const INITIAL_VALUES: Partial<models.ModuleDto> = {
-  name: "",
-  displayName: "",
-  description: "",
-};
-
 const NewModuleDtoEnum = ({
   resourceId,
   moduleId,
@@ -41,7 +25,7 @@ const NewModuleDtoEnum = ({
   navigateToDtoOnCreate,
 }: Props) => {
   const history = useHistory();
-  const { currentWorkspace, currentProject } = useContext(AppContext);
+  const { baseUrl } = useResourceBaseUrl({ overrideResourceId: resourceId });
 
   const {
     createModuleDtoEnum,
@@ -74,7 +58,7 @@ const NewModuleDtoEnum = ({
             }
             if (navigateToDtoOnCreate) {
               history.push(
-                `/${currentWorkspace?.id}/${currentProject?.id}/${resourceId}/modules/${moduleId}/dtos/${result.data.createModuleDtoEnum.id}`
+                `${baseUrl}/modules/${moduleId}/dtos/${result.data.createModuleDtoEnum.id}`
               );
             }
           }
@@ -85,8 +69,8 @@ const NewModuleDtoEnum = ({
       resourceId,
       onDtoCreated,
       history,
-      currentWorkspace?.id,
-      currentProject?.id,
+      baseUrl,
+      navigateToDtoOnCreate,
     ]
   );
 
@@ -94,11 +78,9 @@ const NewModuleDtoEnum = ({
 
   return (
     <div>
-      <NewModuleChild<models.ModuleDto>
+      <NewModuleChild
         resourceId={resourceId}
         moduleId={moduleId}
-        validationSchema={FORM_SCHEMA}
-        initialValues={INITIAL_VALUES}
         loading={loading}
         errorMessage={errorMessage}
         typeName={"Enum"}

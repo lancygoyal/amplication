@@ -11,11 +11,7 @@ type UpgradeCtaTestData = {
 const UpgradeCtaTestVariants: UpgradeCtaTestData[] = [
   {
     linkMessage: "Talk to us",
-    url: " https://meetings-eu1.hubspot.com/paz-yanover/product-overview-vp-product",
-  },
-  {
-    linkMessage: "Talk to our CEO",
-    url: " https://meetings-eu1.hubspot.com/yuval-hazaz/product-overview-ceo",
+    url: " https://meetings-eu1.hubspot.com/yuval-hazaz",
   },
 ];
 

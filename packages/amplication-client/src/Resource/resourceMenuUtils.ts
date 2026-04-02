@@ -5,28 +5,52 @@ export type MenuItemLinks =
   | "entities"
   | "roles"
   | "git"
+  | "git2"
   | "settings"
   | "plugins"
   | "topics"
   | "services"
   | "connections"
   | "modules"
-  | "pendingChanges";
+  | "privatePlugins"
+  | "pendingChanges"
+  | "versions"
+  | "templateResources"
+  | "techDebt";
+
+export const businessDomainRoutes = ["entities", "roles", "modules"];
 
 export const resourceMenuLayout: {
   [key in EnumResourceType]: MenuItemLinks[];
 } = {
-  [EnumResourceType.Service]: [
+  [EnumResourceType.Component]: [
+    "plugins",
     "modules",
     "entities",
     "roles",
-    "plugins",
     "git",
+    "techDebt",
+    "settings",
+  ],
+  [EnumResourceType.Service]: [
+    "plugins",
+    "modules",
+    "entities",
+    "roles",
+    "git",
+    "techDebt",
     "connections",
+    "settings",
+  ],
+  [EnumResourceType.ServiceTemplate]: [
+    "plugins",
+    "versions",
+    "templateResources",
     "settings",
   ],
   [EnumResourceType.ProjectConfiguration]: ["git", "settings"],
   [EnumResourceType.MessageBroker]: ["topics", "services", "git", "settings"],
+  [EnumResourceType.PluginRepository]: ["privatePlugins", "git2", "settings"],
 };
 
 export const linksMap: {
@@ -48,7 +72,12 @@ export const linksMap: {
     to: "/roles",
   },
   git: {
-    title: "Sync with Git",
+    title: "Git Settings",
+    icon: "pending_changes",
+    to: "/git-sync",
+  },
+  git2: {
+    title: "Git Repo",
     icon: "pending_changes",
     to: "/git-sync",
   },
@@ -88,11 +117,35 @@ export const linksMap: {
     to: "/modules",
     license: BillingFeature.CustomActions,
   },
+  privatePlugins: {
+    title: "Private Plugins",
+    icon: "plugins",
+    to: "/private-plugins",
+  },
+  versions: {
+    title: "Versions",
+    icon: "publish",
+    to: "/versions",
+  },
+  templateResources: {
+    title: "Resources",
+    icon: "services",
+    to: "/template-resources",
+  },
+  techDebt: {
+    title: "Tech Debt",
+    icon: "cloud_drizzle",
+    to: "/tech-debt",
+  },
 };
 
 export const setResourceUrlLink = (
   workspace: string,
   project: string,
   resource: string,
-  itemUrl: string
-): string => `/${workspace}/${project}/${resource}${itemUrl}`;
+  itemUrl: string,
+  isPlatformConsole = false
+): string =>
+  !isPlatformConsole
+    ? `/${workspace}/${project}/${resource}${itemUrl}`
+    : `/${workspace}/platform/${project}/${resource}${itemUrl}`;

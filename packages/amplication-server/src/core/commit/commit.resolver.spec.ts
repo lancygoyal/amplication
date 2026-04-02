@@ -16,6 +16,7 @@ import { BuildService } from "../build/build.service";
 import { CommitResolver } from "./commit.resolver";
 import { AmplicationLogger } from "@amplication/util/nestjs/logging";
 import { ApolloServerBase } from "apollo-server-core";
+import { EnumResourceTypeGroup } from "../resource/dto/EnumResourceTypeGroup";
 
 const EXAMPLE_COMMIT_ID = "exampleCommitId";
 const EXAMPLE_USER_ID = "exampleUserId";
@@ -60,8 +61,10 @@ const FIND_ONE_COMMIT_QUERY = gql`
 `;
 
 const FIND_MANY_COMMIT_QUERY = gql`
-  query {
-    commits {
+  query ($id: String!, $resourceTypeGroup: EnumResourceTypeGroup!) {
+    commits(
+      where: { project: { id: $id }, resourceTypeGroup: $resourceTypeGroup }
+    ) {
       id
       userId
       message
@@ -134,6 +137,11 @@ describe("CommitService", () => {
   });
 
   it("should find committing user", async () => {
+    commitServiceFindOneMock.mockReturnValueOnce({
+      ...EXAMPLE_COMMIT,
+      user: null,
+    });
+
     const res = await apolloClient.executeOperation({
       query: USER_QUERY,
       variables: {
@@ -150,10 +158,11 @@ describe("CommitService", () => {
         },
       },
     });
-    expect(userServiceFindUserMock).toBeCalledTimes(1);
-    expect(userServiceFindUserMock).toBeCalledWith(
+    expect(userServiceFindUserMock).toHaveBeenCalledTimes(1);
+    expect(userServiceFindUserMock).toHaveBeenCalledWith(
       {
         where: { id: EXAMPLE_USER_ID },
+        include: { account: true },
       },
       true
     );
@@ -171,8 +180,8 @@ describe("CommitService", () => {
         createdAt: EXAMPLE_COMMIT.createdAt.toISOString(),
       },
     });
-    expect(commitServiceFindOneMock).toBeCalledTimes(1);
-    expect(commitServiceFindOneMock).toBeCalledWith({
+    expect(commitServiceFindOneMock).toHaveBeenCalledTimes(1);
+    expect(commitServiceFindOneMock).toHaveBeenCalledWith({
       where: { id: EXAMPLE_COMMIT_ID },
     });
   });
@@ -180,7 +189,10 @@ describe("CommitService", () => {
   it("should find many Commits", async () => {
     const res = await apolloClient.executeOperation({
       query: FIND_MANY_COMMIT_QUERY,
-      variables: {},
+      variables: {
+        id: "exampleProjectId",
+        resourceTypeGroup: EnumResourceTypeGroup.Services,
+      },
     });
     expect(res.errors).toBeUndefined();
     expect(res.data).toEqual({
@@ -191,7 +203,12 @@ describe("CommitService", () => {
         },
       ],
     });
-    expect(commitServiceFindManyMock).toBeCalledTimes(1);
-    expect(commitServiceFindManyMock).toBeCalledWith({});
+    expect(commitServiceFindManyMock).toHaveBeenCalledTimes(1);
+    expect(commitServiceFindManyMock).toHaveBeenCalledWith({
+      where: {
+        project: { id: "exampleProjectId" },
+        resourceTypeGroup: EnumResourceTypeGroup.Services,
+      },
+    });
   });
 });

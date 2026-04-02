@@ -11,7 +11,6 @@
   --primary: #7950ed;
   --secondary: #a787ff;
   --dark-purple: #6032ea; /** @todo rename */
-  --raised-button-fill: #6032ea;
   --mdc-theme-primary: var(--primary);
   --mdc-theme-secondary: (--dark-purple);
   --mdc-typography-body2-font-family: var(--primary-font-family);
@@ -43,10 +42,10 @@
   --theme-orange: #f6aa50;
 
   --color-positive: #31c587;
-  --color-negative: var(--theme-red);
+  --color-negative: var(--theme-light-red);
   --theme-gradient: linear-gradient(45deg, #6c37ff 0%, #23c4da 100%);
 
-  --tooltip-background: #1b1f23;
+  --tooltip-background: var(--gray-60);
 
   --panel-background: var(--gray-80);
   --panel-hover-background: var(--gray-70);
@@ -160,5 +159,5 @@
   --theme-turquoise-transparent: rgba(65, 202, 221, 0.1);
   --theme-light-red-transparent: rgba(248, 91, 110, 0.1);
 
-  --page-content-width-default: 1300px;
+  --page-content-width-default: 100%;
 }

@@ -13,11 +13,8 @@ import { CROSS_OS_CTRL_ENTER } from "../util/hotkeys";
 import { GET_WORKSPACE_MEMBERS } from "./MemberList";
 import "./InviteMember.scss";
 import { AnalyticsEventNames } from "../util/analytics-events.types";
-import { BillingFeature } from "@amplication/util-billing-types";
-import {
-  EntitlementType,
-  FeatureIndicatorContainer,
-} from "../Components/FeatureIndicatorContainer";
+
+import { useAppContext } from "../context/appContext";
 
 type Values = {
   email: string;
@@ -50,6 +47,10 @@ const keyMap = {
 const InviteMember = () => {
   const { trackEvent } = useTracking();
 
+  const { permissions } = useAppContext();
+
+  const canInvite = permissions.canPerformTask("workspace.member.invite");
+
   const [inviteUser, { loading, error }] = useMutation<TData>(INVITE_USER, {
     onCompleted: (data) => {
       trackEvent({
@@ -65,6 +66,7 @@ const InviteMember = () => {
     (data: Values) => {
       if (!isEmpty(data.email)) {
         inviteUser({ variables: { email: data.email } }).catch(console.error);
+        data.email = "";
       }
     },
     [inviteUser]
@@ -95,17 +97,16 @@ const InviteMember = () => {
                 placeholder="email"
                 autoComplete="off"
                 type="email"
-                disabled={loading}
+                disabled={!canInvite || loading}
               />
-              <FeatureIndicatorContainer
-                featureId={BillingFeature.TeamMembers}
-                entitlementType={EntitlementType.Metered}
-                limitationText="The workspace reached your plan's team members limitation. "
+
+              <Button
+                disabled={!canInvite || loading}
+                buttonStyle={EnumButtonStyle.Primary}
+                type="submit"
               >
-                <Button buttonStyle={EnumButtonStyle.Primary} type="submit">
-                  Invite
-                </Button>
-              </FeatureIndicatorContainer>
+                Invite
+              </Button>
 
               <Snackbar open={Boolean(error)} message={errorMessage} />
             </Form>

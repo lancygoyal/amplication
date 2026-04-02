@@ -1,4 +1,5 @@
 export enum EnumEventType {
+  UnknownEvent = "UNKNOWN_EVENT",
   Signup = "Signup",
   StartEmailSignup = "StartEmailSignup",
   CompleteEmailSignup = "CompleteEmailSignup",
@@ -26,7 +27,13 @@ export enum EnumEventType {
   InteractAmplicationAction = "InteractAmplicationAction",
   CreateUserDTO = "CreateUserDTO",
   InteractUserDTO = "InteractUserDTO",
-  SearchAPIs = "SearchAPIs",
+  ServiceCreate = "createService",
+  MessageBrokerCreate = "createMessageBroker",
+  PluginRepositoryCreate = "createPluginRepository",
+  ServiceTemplateCreate = "createServiceTemplate",
+  CreateResourceFromTemplate = "createResourceFromTemplate",
+  ResourceVersionCreate = "createResourceVersion",
+  ComponentCreate = "createComponent",
 
   //Import Prisma Schema
   ImportPrismaSchemaStart = "importPrismaSchemaStart",
@@ -44,4 +51,33 @@ export enum EnumEventType {
   ArchitectureRedesignStartRedesign = " architectureRedesign_StartRedesign",
   ArchitectureRedesignApply = "architectureRedesign__Apply",
   ArchitectureRedesignStartBreakTheMonolith = "architectureRedesign__StartBreakTheMonolith",
+  StartJovuThread = "StartJovuThread",
+
+  //Teams
+  TeamCreate = "TeamCreate",
+  TeamUpdate = "TeamUpdate",
+  TeamDelete = "TeamDelete",
+  TeamAddMembers = "TeamAddMembers",
+  TeamRemoveMembers = "TeamRemoveMembers",
+  TeamAddRoles = "TeamAddRoles",
+  TeamRemoveRoles = "TeamRemoveRoles",
+  TeamDeleteAssignment = "TeamDeleteAssignment",
+  TeamAssignmentAddRoles = "TeamAssignmentAddRoles",
+  TeamAssignmentRemoveRoles = "TeamAssignmentRemoveRoles",
+
+  //Custom Properties
+  CustomPropertyCreate = "CustomPropertyCreate",
+  CustomPropertyUpdate = "CustomPropertyUpdate",
+  CustomPropertyDelete = "CustomPropertyDelete",
+
+  //Blueprints
+  BlueprintCreate = "BlueprintCreate",
+  BlueprintUpdate = "BlueprintUpdate",
+  BlueprintUpdateEngine = "BlueprintUpdateEngine",
+  BlueprintDelete = "BlueprintDelete",
+
+  //Roles
+  RoleCreate = "RoleCreate",
+  RoleUpdate = "RoleUpdate",
+  RoleDelete = "RoleDelete",
 }

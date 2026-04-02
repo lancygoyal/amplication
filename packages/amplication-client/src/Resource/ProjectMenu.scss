@@ -1,0 +1,34 @@
+@import "../style/index.scss";
+
+.project-menu {
+  border-right: $border-dark;
+  min-width: var(--menu-width);
+  display: flex;
+  flex-direction: column;
+
+  .menu-container {
+    flex: 1;
+    @include scrollbars(5px, var(--gray-30), transparent);
+    overflow-y: auto;
+    overflow-x: hidden;
+    overflow: visible;
+
+    height: fit-content;
+    overflow: hidden;
+    transition: max-height 0.4s ease-in-out;
+    max-height: 400px;
+
+    &--inner {
+    }
+
+    &--close {
+      max-height: 0;
+      overflow: hidden;
+    }
+  }
+  .bottom-menu-container {
+    overflow: hidden;
+    overflow: visible;
+    padding-bottom: var(--default-spacing);
+  }
+}

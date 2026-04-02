@@ -3,13 +3,6 @@
 .text-input {
   position: relative;
 
-  &__invalid {
-    color: var(--theme-red);
-    position: absolute;
-    right: 8px;
-    bottom: 10px;
-  }
-
   label {
     @include label;
     position: relative;
@@ -44,16 +37,25 @@
     resize: none;
   }
 
+  textarea.text-input__textarea--small {
+    height: var(--textarea-height-small);
+  }
+
   &--has-error {
     input,
     textarea {
-      border-color: var(--theme-red);
+      border-color: var(--color-negative);
 
       &:active:not(:disabled),
       &:hover:not(:disabled),
       &:focus:not(:disabled) {
-        border-color: var(--theme-red);
+        border-color: var(--color-negative);
       }
     }
+  }
+
+  &__error {
+    color: var(--color-negative);
+    font-size: var(--tag-font-size);
   }
 }

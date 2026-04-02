@@ -6,6 +6,7 @@ import { Commit } from "../../models";
 import { PendingChange } from "../resource/dto";
 import { EntityService } from "../entity/entity.service";
 import { BlockService } from "../block/block.service";
+import { RESOURCE_TYPE_GROUP_TO_RESOURCE_TYPE } from "../resource/constants";
 @Injectable()
 export class CommitService {
   constructor(
@@ -19,7 +20,55 @@ export class CommitService {
   }
 
   async findMany(args: FindManyCommitArgs): Promise<Commit[]> {
-    return this.prisma.commit.findMany(args);
+    const { resourceTypeGroup } = args.where;
+
+    const resourceTypes =
+      RESOURCE_TYPE_GROUP_TO_RESOURCE_TYPE[resourceTypeGroup];
+
+    const { where } = args;
+    delete where.resourceTypeGroup;
+
+    return this.prisma.commit.findMany({
+      ...args,
+      include: {
+        builds: {
+          include: {
+            action: {
+              include: {
+                steps: {
+                  include: {
+                    logs: true,
+                  },
+                },
+              },
+            },
+            resource: true,
+            createdBy: {
+              include: {
+                account: true,
+              },
+            },
+          },
+        },
+        user: {
+          include: {
+            account: true,
+          },
+        },
+      },
+      where: {
+        ...where,
+        builds: {
+          some: {
+            resource: {
+              resourceType: {
+                in: resourceTypes,
+              },
+            },
+          },
+        },
+      },
+    });
   }
 
   async getChanges(commitId: string): Promise<PendingChange[]> {

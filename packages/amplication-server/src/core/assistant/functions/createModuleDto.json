@@ -1,0 +1,85 @@
+{
+  "name": "createModuleDto",
+  "description": "creates a new DTO for a module in a resource. The DTO is created with a list of properties, which can be created with a type of another DTO. You can use the function getModuleDtosAndEnums to get a list of available DTOs and Enums in the module or other modules.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "moduleId": {
+        "type": "string",
+        "description": "the ID of the module in which the DTO is created. The moduleID is different then the resourceID. The moduleID is the ID of the module in which the DTO is created. The resourceID is the ID of the resource in which the module exist. You can use the function get getResourceModules to get a list of available modules in a resource. "
+      },
+      "resourceId": {
+        "type": "string",
+        "description": "the ID of the resource in which the DTO is created. If there are multiple resources available in the context, show the user a list of resources to choose from. If there is no resource available, do not use projectId instead"
+      },
+      "dtoName": {
+        "type": "string",
+        "description": "the name of the dto. e.g.: 'customerCreateInput'"
+      },
+      "dtoDescription": {
+        "type": "string",
+        "description": "the description of the dto. e.g.: 'the input type for creating a new customer'"
+      },
+      "properties": {
+        "type": "array",
+        "description": "a list of properties of the DTO.",
+        "items": {
+          "type": "object",
+          "required": ["name", "isOptional", "isArray", "propertyTypes"],
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "the name of the property"
+            },
+            "isOptional": {
+              "type": "boolean",
+              "description": "whether the property is optional or not"
+            },
+            "isArray": {
+              "type": "boolean",
+              "description": "whether the property is an array or not"
+            },
+            "propertyTypes": {
+              "type": "array",
+              "description": "the types of the property",
+              "items": {
+                "type": "object",
+                "required": ["type", "isArray"],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "String",
+                      "Boolean",
+                      "Integer",
+                      "Float",
+                      "DateTime",
+                      "Dto",
+                      "Json"
+                    ],
+                    "description": "The type of the property. Use the type DTO for DTOs and Enums. When the type is Dto, the dtoId property is required. You can use the function getModuleDtosAndEnums to get a list of available DTOs and Enums in the module or other modules."
+                  },
+                  "isArray": {
+                    "type": "boolean",
+                    "description": "whether the property is an array or not"
+                  },
+                  "dtoId": {
+                    "type": "string",
+                    "description": "the ID of the DTO. If the type is a DTO or Enum."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "required": [
+      "moduleId",
+      "resourceId",
+      "dtoName",
+      "dtoDescription",
+      "properties"
+    ]
+  }
+}

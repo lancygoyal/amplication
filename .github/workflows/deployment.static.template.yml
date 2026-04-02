@@ -22,6 +22,9 @@ on:
         required: true
       AWS_SECRET_ACCESS_KEY:
         required: true
+env:
+  NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
+  NX_REJECT_UNKNOWN_LOCAL_CACHE: 0
 
 jobs:
   deployment-static:
@@ -30,7 +33,7 @@ jobs:
     environment:
       name: ${{ inputs.environment-name }}
       url: ${{ vars.AMPLICATION_URL }}
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
         with:
@@ -73,7 +76,4 @@ jobs:
             if [[ "${{ inputs.environment-name }}" == "production" ]];
             then
               npx nx deploy:static --configuration="${{ inputs.environment-name }}" --bucket-name="app.amplication.com" --distribution-id="${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}"
-            else
-              npx nx deploy:static --configuration="${{ inputs.environment-name }}" --bucket-name="app.amplication-${{ inputs.environment-name }}.com" --distribution-id="${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}"
-            fi;  
           fi;

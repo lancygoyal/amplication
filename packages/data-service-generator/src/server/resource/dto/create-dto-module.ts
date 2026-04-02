@@ -21,6 +21,9 @@ import {
   IS_JSON_VALUE_ID,
   VALIDATE_NESTED_ID,
   CLASS_VALIDATOR_CUSTOM_VALIDATORS_MODULE,
+  MIN_ID,
+  MAX_ID,
+  MAX_LENGTH_ID,
 } from "./class-validator.util";
 import {
   CLASS_TRANSFORMER_MODULE,
@@ -48,7 +51,7 @@ import {
 import { SORT_ORDER_ID, SORT_ORDER_MODULE } from "./sort-order.util";
 import { GRAPHQL_BIGINT_VALUE, INPUT_JSON_VALUE_KEY } from "./constants";
 import DsgContext from "../../../dsg-context";
-import { logger } from "../../../logging";
+import { logger } from "@amplication/dsg-utils";
 import { DECIMAL_JS_MODULE, DECIMAL_VALUE_ID } from "./decimal-js";
 
 const FILTERS_IMPORTABLE_NAMES = Object.fromEntries(
@@ -73,6 +76,9 @@ export function getImportableNames(isCustomDto: boolean) {
       IS_STRING_ID,
       IS_OPTIONAL_ID,
       IS_ENUM_ID,
+      MIN_ID,
+      MAX_ID,
+      MAX_LENGTH_ID,
       VALIDATE_NESTED_ID,
     ],
     [CLASS_VALIDATOR_CUSTOM_VALIDATORS_MODULE]: [IS_JSON_VALUE_ID],

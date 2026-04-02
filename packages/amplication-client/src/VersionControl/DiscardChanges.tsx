@@ -11,6 +11,7 @@ import { useTracking } from "../util/analytics";
 type Props = {
   isOpen: boolean;
   projectId: string;
+  resourceTypeGroup: models.EnumResourceTypeGroup;
   onComplete: () => void;
   onDismiss: () => void;
 };
@@ -18,6 +19,7 @@ type Props = {
 const DiscardChanges = ({
   isOpen,
   projectId,
+  resourceTypeGroup,
   onComplete,
   onDismiss,
 }: Props) => {
@@ -39,12 +41,12 @@ const DiscardChanges = ({
             }),
           });
         } else {
-          /**@todo: handle other types of blocks */
+          const block = change.origin as models.Block;
 
           cache.evict({
             id: cache.identify({
               id: change.originId,
-              __typename: "ServiceSettings",
+              __typename: block.blockType,
             }),
           });
         }
@@ -65,9 +67,10 @@ const DiscardChanges = ({
     discardChanges({
       variables: {
         projectId,
+        resourceTypeGroup,
       },
     }).catch(console.error);
-  }, [projectId, discardChanges]);
+  }, [trackEvent, discardChanges, projectId, resourceTypeGroup]);
 
   const errorMessage = formatError(error);
 
@@ -103,7 +106,15 @@ const DiscardChanges = ({
 export default DiscardChanges;
 
 const DISCARD_CHANGES = gql`
-  mutation discardChanges($projectId: String!) {
-    discardPendingChanges(data: { project: { connect: { id: $projectId } } })
+  mutation discardChanges(
+    $projectId: String!
+    $resourceTypeGroup: EnumResourceTypeGroup!
+  ) {
+    discardPendingChanges(
+      data: {
+        project: { connect: { id: $projectId } }
+        resourceTypeGroup: $resourceTypeGroup
+      }
+    )
   }
 `;

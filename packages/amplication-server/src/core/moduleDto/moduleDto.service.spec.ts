@@ -6,7 +6,6 @@ import { EnumDataType } from "../../enums/EnumDataType";
 import { AmplicationError } from "../../errors/AmplicationError";
 import { Account, Entity, EntityField, User } from "../../models";
 import { PrismaService } from "../../prisma/prisma.service";
-import { EnumPreviewAccountType } from "../auth/dto/EnumPreviewAccountType";
 import { BlockService } from "../block/block.service";
 import { EntityService } from "../entity/entity.service";
 import { Module } from "../module/dto/Module";
@@ -38,8 +37,6 @@ const EXAMPLE_ACCOUNT: Account = {
   firstName: EXAMPLE_FIRST_NAME,
   lastName: EXAMPLE_LAST_NAME,
   password: EXAMPLE_PASSWORD,
-  previewAccountType: EnumPreviewAccountType.None,
-  previewAccountEmail: null,
 };
 
 const EXAMPLE_USER: User = {
@@ -320,6 +317,7 @@ describe("ModuleDtoService", () => {
     expect(await service.createEnum(args, EXAMPLE_USER)).toEqual({
       ...EXAMPLE_DTO,
       dtoType: EnumModuleDtoType.CustomEnum,
+      members: [],
     });
     expect(blockServiceCreateMock).toBeCalledTimes(1);
     expect(blockServiceCreateMock).toBeCalledWith(
@@ -330,7 +328,7 @@ describe("ModuleDtoService", () => {
           blockType: EnumBlockType.ModuleDto,
           enabled: true,
           dtoType: EnumModuleDtoType.CustomEnum,
-          properties: [],
+          members: [],
         },
       },
       EXAMPLE_USER_ID

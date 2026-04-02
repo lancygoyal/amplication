@@ -50,16 +50,11 @@ export enum AnalyticsEventNames {
   ServiceSettingsUpdate = "updateServiceSettings",
 
   // resource
-  ResourceFromFileCreate = "createResourceFromFile",
   ResourceFromSampleCreate = "createResourceFromSample",
   ResourceFromScratchCreate = "createResourceFromScratch",
   ResourceInfoUpdate = "updateResourceInfo",
-  ResourceBuild = "buildResource",
   ResourceDelete = "deleteResource",
   ResourceCardClick = "resourceCardClick",
-  MessageBrokerCreate = "createResourceClick-MessageBroker",
-  ProjectConfigurationCreate = "createResourceClick-ProjectConfiguration",
-  ServiceCreate = "createResourceClick-Service",
 
   // entity
 
@@ -72,16 +67,23 @@ export enum AnalyticsEventNames {
   ImportPrismaSchemaSelectFile = "importPrismaSchemaSelectFile",
 
   // message broker
+  PluginRepositoryErrorCreate = "pluginRepositoryErrorCreate",
+  CreatePluginRepository = "createPluginRepository",
+  CreateComponent = "createComponent",
+
+  // plugin repository
   MessageBrokerConnectedServicesTileClick = "messageBrokerConnectedServicesTileClick",
   MessageBrokerTopicsTileClick = "messageBrokerTopicsTileClick",
-  MessageBrokerErrorCreate = "messageBrokerErrorCreate",
-  MessageBrokerCreateClick = "createMessageBrokerClick",
   MessagePatternTypeClick = "messagePatternTypeClick",
   BackToProjectsClick = "backToProjectsClick",
 
   // topic
   TopicCreate = "createTopic",
   TopicUpdate = "updateTopic",
+
+  // private plugin
+  PrivatePluginCreate = "createPrivatePlugin",
+  PrivatePluginUpdate = "updatePrivatePlugin",
 
   // commit & build & pending changes
   CommitClicked = "commitClicked",
@@ -105,9 +107,7 @@ export enum AnalyticsEventNames {
   GithubOpenPullRequest = "openGithubPullRequest",
   GitHubRepositorySync = "selectGitRepository",
   GithubRepoSync = "selectGithubRepo",
-  CreateService = "CreateService",
-  CreateMessageBroker = "CreateMessageBroker",
-  CreateProjectConfiguration = "CreateProjectConfiguration",
+
   StarUsBannerCTAClick = "StarUsBannerCTAClick",
   StarUsBannerClose = "StarUsBannerClose",
   MWC2024BannerCTAClick = "MWC2024BannerCTAClick",
@@ -164,10 +164,12 @@ export enum AnalyticsEventNames {
   ModelOrganizer_AddServiceClick = "ModelOrganizer_AddServiceClick",
   ModelOrganizer_MoveEntity = "ModelOrganizer_MoveEntity",
 
-  // break the monolith preview user
-  PreviewUser_GenerateCode = "PreviewUser_GenerateCode",
-
   ChangedToDotNet = "ChangedToDotNet",
   ChoseDotNetUsage = "ChoseDotNetUsage",
   BookDotNetDemo = "BookDotNetDemo",
+
+  AskJovuClick = "AskJovuClick",
+  CreateWithJovuClick = "CreateWithJovuClick",
+  ViewOnboardingWithJovu = "ViewOnboardingWithJovu",
+  SendPromptOnboardingWithJovu = "SendPromptOnboardingWithJovu",
 }
